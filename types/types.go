@@ -15,6 +15,7 @@ const (
 
 type Schema struct {
 	Tables []Table `json:"tables,omitempty"`
+	Types  []Table `json:"types,omitempty"`
 }
 
 type Table struct {

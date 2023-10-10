@@ -54,12 +54,12 @@ func Columns(tablesMap, typesMap *TypeMap, table reflect.Type) []types.Column {
 	return columns
 }
 
-func Parse(tables []any, types ...any) {
+func Parse(_tables []any, _types ...any) *types.Schema {
 
 	tablesMap := TypeMap{}
 	typesMap := TypeMap{}
 
-	for _, v := range tables {
+	for _, v := range _tables {
 		t := reflect.TypeOf(v)
 		for t.Kind() == reflect.Pointer {
 			t = t.Elem()
@@ -67,7 +67,7 @@ func Parse(tables []any, types ...any) {
 		tablesMap[t.Name()] = t
 	}
 
-	for _, v := range types {
+	for _, v := range _types {
 		t := reflect.TypeOf(v)
 		for t.Kind() == reflect.Pointer {
 			t = t.Elem()
@@ -75,5 +75,7 @@ func Parse(tables []any, types ...any) {
 		typesMap[t.Name()] = t
 	}
 
-	Tables(&tablesMap, &typesMap)
+	return &types.Schema{
+		Tables: Tables(&tablesMap, &typesMap),
+	}
 }
