@@ -1,0 +1,104 @@
+package handlers
+
+import (
+	"{{ .Pkg }}/db"
+	"{{ .Pkg }}/models"
+	"encoding/json"
+
+	"github.com/gofiber/fiber/v2"
+	"gorm.io/gorm"
+)
+
+func QueryResource[T models.Model](resource string) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		data := new([]T)
+		query := new(Query)
+		q := c.Query("query", "{}")
+		err := json.Unmarshal([]byte(q), query)
+		if err != nil {
+			return Error(c, err)
+		}
+		client, err := query.P(db.Client.WithContext(c.UserContext()), resource)
+		if err != nil {
+			return Error(c, err)
+		}
+		var count int64
+		err = client.Find(data).Count(&count).Error
+		if err != nil {
+			return Error(c, err)
+		}
+		result := fiber.Map{"count": count, resource: data}
+		go Broadcast(resource+":query", result)
+		return Success(c, result)
+	}
+}
+
+func CreateResource[T models.Model](resource string) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		body := new([]T)
+		err := c.BodyParser(body)
+		if err != nil {
+			return Error(c, err)
+		}
+		err = db.Client.WithContext(c.UserContext()).Transaction(func(tx *gorm.DB) error {
+			for i, v := range *body {
+				if err := tx.Create(&v).Error; err != nil {
+					return ApiError{Err: err, Index: i}
+				}
+			}
+			return nil
+		})
+		if err != nil {
+			return Error(c, err)
+		}
+		go Broadcast(resource+":create", body)
+		return Success(c, body, fiber.StatusCreated)
+	}
+}
+
+func UpdateResource[T models.Model](resource string) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		body := new([]T)
+		err := c.BodyParser(body)
+		if err != nil {
+			return Error(c, err)
+		}
+		db.Client.WithContext(c.UserContext()).Transaction(func(tx *gorm.DB) error {
+			for i, v := range *body {
+				err := tx.Updates(&v).Error
+				if err != nil {
+					return ApiError{Err: err, Index: i}
+				}
+			}
+			return nil
+		})
+		if err != nil {
+			return Error(c, err)
+		}
+		go Broadcast(resource+"update", body)
+		return Success(c, body)
+	}
+}
+
+func DeleteResource[T models.Model](resource string) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		body := new(Where)
+		err := c.BodyParser(body)
+		if err != nil {
+			return Error(c, err)
+		}
+		predicate, vars, err := body.P()
+		if err != nil {
+			if err != nil {
+				return Error(c, err)
+			}
+		}
+		err = db.Client.WithContext(c.UserContext()).Model(new(T)).Where(predicate, vars...).Error
+		if err != nil {
+			return Error(c, err)
+		}
+		go Broadcast(resource+":delete", body)
+		return Success(c, body)
+	}
+}
+

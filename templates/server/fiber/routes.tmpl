@@ -1,0 +1,18 @@
+package routes
+
+import (
+	"{{ .Pkg }}/handlers"
+	"{{ .Pkg }}/models"
+
+	"github.com/gofiber/fiber/v2"
+)
+
+func routes(r fiber.Router) {
+	{{- range .Tables }}
+	{{ .Table }} := r.Group("/{{ .Table }}")
+	{{ .Table }}.Get("/", handlers.QueryResource[models.{{ .Name }}]("{{ .Table }}"))
+	{{ .Table }}.Post("/", handlers.CreateResource[models.{{ .Name }}]("{{ .Table }}"))
+	{{ .Table }}.Patch("/", handlers.UpdateResource[models.{{ .Name }}]("{{ .Table }}"))
+	{{ .Table }}.Delete("/", handlers.DeleteResource[models.{{ .Name }}]("{{ .Table }}"))
+	{{ end }}
+}

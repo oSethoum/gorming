@@ -1,0 +1,50 @@
+package handlers
+
+import (
+	"errors"
+	"path"
+
+	"github.com/gofiber/fiber/v2"
+	"github.com/h2non/bimg"
+	"github.com/rs/xid"
+)
+
+func UploadImage(c *fiber.Ctx) error {
+	form, err := c.MultipartForm()
+	if err != nil {
+		return Error(c, err)
+	}
+	files := form.File["files"]
+	images := []string{}
+	for _, file := range files {
+		ext := path.Ext(file.Filename)
+		if !inArray([]string{".jpg", ".png", ".jpeg", ".webp"}, ext) {
+			return Error(c, errors.New("files extension have to be in .jpg .png .jpeg .webp"))
+		}
+		filename := xid.New().String()
+		image := make([]byte, file.Size)
+		f, err := file.Open()
+		if err != nil {
+			return Error(c, err)
+		}
+		_, err = f.Read(image)
+		if err != nil {
+			return Error(c, err)
+		}
+		go func() {
+			newImage, err := bimg.NewImage(image).Process(bimg.Options{
+				Height: 300,
+				Type:   bimg.WEBP,
+			})
+			if err != nil {
+				println(err.Error())
+			}
+			err = bimg.Write(path.Join("./data/images", filename+".webp"), newImage)
+			if err != nil {
+				println(err.Error())
+			}
+		}()
+		images = append(images, filename+".webp")
+	}
+	return Success(c, fiber.Map{"images": images})
+}

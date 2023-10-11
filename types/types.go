@@ -1,5 +1,7 @@
 package types
 
+import "reflect"
+
 type File uint
 
 const (
@@ -13,6 +15,9 @@ const (
 	Privacy
 )
 
+type TypeMap map[string]reflect.Type
+type FieldMap map[string]reflect.StructField
+
 type Schema struct {
 	Tables []Table `json:"tables,omitempty"`
 	Types  []Table `json:"types,omitempty"`
@@ -25,16 +30,17 @@ type Table struct {
 }
 
 type Tags struct {
-	Gorm    *GormTag    `json:"gorm,omitempty"`
-	Gorming *GormingTag `json:"gorming,omitempty"`
-	Json    *JsonTag    `json:"json,omitempty"`
+	Gorm    GormTag    `json:"gorm,omitempty"`
+	Gorming GormingTag `json:"gorming,omitempty"`
+	Json    JsonTag    `json:"json,omitempty"`
 }
 
 type GormTag struct {
-	Name       string `json:"name,omitempty"`
+	Column     string `json:"column,omitempty"`
 	Default    string `json:"default,omitempty"`
 	Unique     bool   `json:"unique,omitempty"`
 	ForeignKey string `json:"foreign_key,omitempty"`
+	References string `json:"reference,omitempty"`
 }
 
 type GormingTag struct {
@@ -49,6 +55,7 @@ type JsonTag struct {
 
 type Edge struct {
 	Table    string `json:"table,omitempty"`
+	Unique   bool   `json:"unique,omitempty"`
 	LocalKey string `json:"local_key,omitempty"`
 	TableKey string `json:"table_key,omitempty"`
 }
@@ -58,6 +65,7 @@ type Column struct {
 	Type    string `json:"type,omitempty"`
 	RawType string `json:"raw_type,omitempty"`
 	Edge    *Edge  `json:"edge,omitempty"`
+	Slice   bool   `json:"slice,omitempty"`
 	Tags    Tags   `json:"tags,omitempty"`
 }
 

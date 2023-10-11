@@ -1,0 +1,11 @@
+package db
+
+import "{{ .Pkg }}/models"
+
+func migrate() {
+	Client.AutoMigrate(
+    {{- range .Tables }}
+    &models.{{ .Name }}{},
+    {{- end }}
+    )
+}

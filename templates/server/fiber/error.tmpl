@@ -1,0 +1,61 @@
+package handlers
+
+import (
+	"fmt"
+	"regexp"
+	"strings"
+
+	"github.com/gofiber/fiber/v2"
+	sqlite3 "github.com/mutecomm/go-sqlcipher/v4"
+	"github.com/oSethoum/validator"
+)
+
+type ApiError struct {
+	Err   error
+	Index int
+}
+
+func (e ApiError) Error() string {
+	return fmt.Sprintf("%s, index: %d", e.Err.Error(), e.Index)
+}
+
+func parseError(err error) any {
+	apiError, isApiErr := err.(ApiError)
+	errMap := fiber.Map{
+		"type":    "other",
+		"details": err.Error(),
+	}
+	if isApiErr && apiError.Err != nil {
+		err = apiError.Err
+		errMap["index"] = apiError.Index
+	}
+
+	if validationError, ok := apiError.Err.(*validator.Error); ok {
+		errMap["type"] = "validation"
+		errMap["details"] = validationError.FieldsErrors
+	}
+	{{ if eq .DBKind "sqlite" }}
+	if sqlError, ok := apiError.Err.(sqlite3.Error); ok {
+		details := fiber.Map{}
+		fieldPattern := `\w+\.\w+`
+		fieldRegex, _ := regexp.Compile(fieldPattern)
+		fieldMatch := fieldRegex.FindString(sqlError.Error())
+		if len(fieldMatch) > 0 {
+			details["field"] = strings.Split(fieldMatch, ".")[len(fieldMatch)-1]
+		}
+		if strings.Contains(err.Error(), "constraint") {
+			details["constraint"] = strings.ToLower(strings.Split(err.Error(), " ")[0])
+
+		}
+		details["error"] = err.Error()
+		errMap["type"] = "database"
+		errMap["index"] = apiError.Index
+		errMap["details"] = details
+	}
+	{{ end }}
+	{{ if eq .DBKind "mysql" }}
+	{{ end }}
+	{{ if eq .DBKind "postgres" }}
+	{{ end }}
+	return errMap
+}

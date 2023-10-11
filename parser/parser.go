@@ -1,15 +1,14 @@
 package parser
 
 import (
+	"log"
 	"reflect"
 	"strings"
 
 	"github.com/oSethoum/gorming/types"
 )
 
-type TypeMap map[string]reflect.Type
-
-func Tables(tablesMap, typesMap *TypeMap) []types.Table {
+func Tables(tablesMap, typesMap *types.TypeMap) []types.Table {
 	tables := []types.Table{}
 
 	for name, table := range *tablesMap {
@@ -23,43 +22,101 @@ func Tables(tablesMap, typesMap *TypeMap) []types.Table {
 	return tables
 }
 
-func Columns(tablesMap, typesMap *TypeMap, table reflect.Type) []types.Column {
+func Columns(tablesMap, typesMap *types.TypeMap, table reflect.Type) []types.Column {
+
+	fieldsMap := &types.FieldMap{}
+	fields(fieldsMap, table)
 	columns := []types.Column{}
 
-	for i := 0; i < table.NumField(); i++ {
-		f := table.Field(i)
-		if f.Type.Kind() == reflect.Struct && f.Anonymous {
-			columns = append(columns, Columns(tablesMap, typesMap, f.Type)...)
-			continue
-		}
-
+	for name, f := range *fieldsMap {
 		slices := strings.Split(f.Type.String(), ".")
 		rawType := slices[len(slices)-1]
 		rawType = cleanString(rawType, "[]", "*")
 
 		column := types.Column{
-			Name:    f.Name,
+			Name:    name,
 			Type:    f.Type.String(),
 			RawType: rawType,
+			Tags:    tags(f),
+			Slice:   strings.Contains(f.Type.String(), "[]"),
 		}
 
-		if table, ok := (*tablesMap)[rawType]; ok {
-			column.Edge = &types.Edge{
-				Table: table.Name(),
+		if table, ok := (*tablesMap)[column.RawType]; ok {
+
+			tableFieldsMap := &types.FieldMap{}
+			fields(tableFieldsMap, table)
+
+			edge := &types.Edge{
+				Table:  column.RawType,
+				Unique: !strings.Contains(column.Type, "[]"),
 			}
+
+			var keyFound, referenceFound bool
+
+			if edge.Unique {
+				key := choice(column.Tags.Gorm.ForeignKey, column.Name+"ID")
+				var keyLocal bool
+
+				if _, keyFound = (*tableFieldsMap)[key]; keyFound {
+					edge.TableKey = key
+				}
+
+				if !keyFound {
+					key = choice(column.Tags.Gorm.ForeignKey, column.RawType+"ID")
+				}
+
+				if _, keyFound = (*fieldsMap)[key]; keyFound {
+					edge.LocalKey = choice(column.Tags.Gorm.ForeignKey)
+					keyLocal = true
+				}
+
+				reference := choice(column.Tags.Gorm.References, "ID")
+				if keyLocal {
+					if _, referenceFound = (*tableFieldsMap)[key]; referenceFound {
+						edge.TableKey = reference
+					}
+
+				} else {
+					if _, referenceFound = (*fieldsMap)[key]; referenceFound {
+						edge.LocalKey = reference
+					}
+				}
+
+			} else {
+				key := choice(column.Tags.Gorm.ForeignKey, column.RawType+"ID")
+				reference := choice(column.Tags.Gorm.References, "ID")
+
+				if _, keyFound = (*tableFieldsMap)[key]; keyFound {
+					edge.TableKey = key
+				}
+
+				if _, referenceFound = (*fieldsMap)[reference]; referenceFound {
+					edge.LocalKey = key
+				}
+
+			}
+
+			if !keyFound {
+				log.Fatalf("gorming: cannot find foreignKey for %s.%s", table.Name(), column.Name)
+			}
+
+			if !referenceFound {
+				log.Fatalf("gorming: cannot find reference for %s.%s", table.Name(), column.Name)
+			}
+
+			column.Edge = edge
 		}
 		columns = append(columns, column)
 	}
-
 	return columns
 }
 
-func Parse(_tables []any, _types ...any) *types.Schema {
+func Parse(tablesArray []any, typesArray ...any) *types.Schema {
 
-	tablesMap := TypeMap{}
-	typesMap := TypeMap{}
+	tablesMap := types.TypeMap{}
+	typesMap := types.TypeMap{}
 
-	for _, v := range _tables {
+	for _, v := range tablesArray {
 		t := reflect.TypeOf(v)
 		for t.Kind() == reflect.Pointer {
 			t = t.Elem()
@@ -67,7 +124,7 @@ func Parse(_tables []any, _types ...any) *types.Schema {
 		tablesMap[t.Name()] = t
 	}
 
-	for _, v := range _types {
+	for _, v := range tablesArray {
 		t := reflect.TypeOf(v)
 		for t.Kind() == reflect.Pointer {
 			t = t.Elem()
