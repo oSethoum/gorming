@@ -8,7 +8,7 @@ import (
 )
 
 func routes(r fiber.Router) {
-	{{- range .Tables }}
+	{{- range .Schema.Tables }}
 	{{ .Table }} := r.Group("/{{ .Table }}")
 	{{ .Table }}.Get("/", handlers.QueryResource[models.{{ .Name }}]("{{ .Table }}"))
 	{{ .Table }}.Post("/", handlers.CreateResource[models.{{ .Name }}]("{{ .Table }}"))

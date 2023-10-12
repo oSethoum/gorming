@@ -93,7 +93,7 @@ func Columns(tablesMap, typesMap *types.TypeMap, table reflect.Type) []types.Col
 				}
 
 				if _, referenceFound = (*fieldsMap)[reference]; referenceFound {
-					edge.LocalKey = key
+					edge.LocalKey = reference
 				}
 
 			}
@@ -114,7 +114,6 @@ func Columns(tablesMap, typesMap *types.TypeMap, table reflect.Type) []types.Col
 }
 
 func Parse(tablesArray []any, typesArray ...any) *types.Schema {
-
 	tablesMap := types.TypeMap{}
 	typesMap := types.TypeMap{}
 

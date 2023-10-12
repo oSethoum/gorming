@@ -4,14 +4,14 @@ import (
 	"log"
 	"os"
 
-	{{ if eq .DBKind "sqlite" }}
+	{{ if eq .Cofig.DBKind "sqlite" }}
 	"fmt"
 	"github.com/oSethoum/sqlite"
 	{{ end }}
-	{{ if eq .DBKind "mysql" }}
+	{{ if eq .Cofig.DBKind "mysql" }}
 	"gorm.io/driver/mysql"
 	{{ end }}
-	{{ if eq .DBKind "postgres" }}
+	{{ if eq .Cofig.DBKind "postgres" }}
 	"gorm.io/driver/postgres"
 	{{ end }}
 	"gorm.io/gorm"
@@ -22,16 +22,16 @@ var Client *gorm.DB
 
 func Init() {
 	os.MkdirAll("./data", 07777)
-	{{ if eq .DBKind "sqlite" }}
+	{{ if eq .Cofig.DBKind "sqlite" }}
 	dsn := fmt.Sprintf("file:%s?_fk=1&_pragma_key=%s&_journal_mode=WAL", "./data/db.sqlite", "")
 	dialect := sqlite.Open(dsn)
 	{{ end }}
 
-	{{ if eq .DBKind "mysql" }}
+	{{ if eq .Cofig.DBKind "mysql" }}
 	dsn := "user:pass@tcp(127.0.0.1:3306)/dbname?charset=utf8mb4&parseTime=True&loc=Local"
 	dialect := mysql.Open(dsn)
 	{{ end }}
-	{{ if eq .DBKind "postgres" }}
+	{{ if eq .Cofig.DBKind "postgres" }}
 	dsn := "host=localhost user= password= dbname= port=5432 sslmode=disable"
 	dialect := postgres.Open(dsn)
 	{{ end }}

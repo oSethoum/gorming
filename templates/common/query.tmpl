@@ -298,11 +298,12 @@ func edge(s string) string {
 
 func getRelations() Relations {
 	return Relations{
-		{{ range .Tables }}
-         "{{ .Table }}": {
-         {{ range .Columns }} 
-            {{ with .Edge }} 
-            "{{ .Name }}":[3]string{"{{ .Table }}", "{{ .LocalKey }}", "{{ .ForiegnKey }}"},
+		{{ range .Schema.Tables }}
+         "{{ plural .Table }}": {
+         {{ range .Columns }}
+				{{ $column := . }}
+            {{ with .Edge }}
+            "{{ $column.Name }}":[3]string{"{{ plural .Table }}", "{{ .LocalKey }}", "{{ .TableKey }}"},
             {{end}} 
          {{end}} 
       },

@@ -1,5 +1,5 @@
 package models 
 
 type Model interface {
-    {{ .Models }}
+    {{ models .Schema.Tables }}
 }

@@ -2,26 +2,35 @@ package gorming
 
 import (
 	"bytes"
+	"embed"
 	"encoding/json"
-	"os"
-	"path"
 
 	"github.com/oSethoum/gorming/parser"
 	"github.com/oSethoum/gorming/types"
 )
 
+//go:embed templates
+var templates embed.FS
+
 type Engine = func(tables []any, types ...any)
 
 func New(config types.Config) Engine {
-	return func(tables []any, types ...any) {
-		schema := parser.Parse(tables, types...)
+
+	return func(tables []any, Types ...any) {
+		schema := parser.Parse(tables, Types...)
+
+		data := types.TemplateData{
+			Schema: schema,
+			Config: config,
+		}
+
+		writeTemplateData("common/query", "query.go", data, types.Query)
 
 		buffer := &bytes.Buffer{}
 		encoder := json.NewEncoder(buffer)
 		encoder.SetEscapeHTML(false)
 		encoder.Encode(schema)
 
-		cwd, _ := os.Getwd()
-		os.WriteFile(path.Join(cwd, "schema.json"), buffer.Bytes(), 07777)
+		writeFile("schema.json", buffer.Bytes())
 	}
 }

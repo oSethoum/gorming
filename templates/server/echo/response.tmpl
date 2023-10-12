@@ -1,0 +1,35 @@
+package handlers
+
+import (
+	"net/http"
+	"github.com/labstack/echo/v4"
+)
+
+func Success(c echo.Context, event string, data any, status ...int) error {
+	code := http.StatusOK
+	if len(status) > 0 {
+		code = status[0]
+	}
+	if event != "" {
+		go Broadcast(event, data)	
+	}
+	return c.JSON(code, echo.Map{
+		"code":   code,
+		"status": "success",
+		"data":   data,
+	})
+}
+
+func Error(c echo.Context, err error, status ...int) error {
+	code := http.StatusBadRequest
+	if len(status) > 0 {
+		code = status[0]
+	}
+
+	return c.JSON(code, echo.Map{
+		"code":   code,
+		"status": "error",
+		"error":  parseError(err),
+	})
+}
+
