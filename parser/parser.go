@@ -41,10 +41,10 @@ func Columns(tablesMap, typesMap *types.TypeMap, table reflect.Type) []types.Col
 			Slice:   strings.Contains(f.Type.String(), "[]"),
 		}
 
-		if table, ok := (*tablesMap)[column.RawType]; ok {
+		if edgeTable, ok := (*tablesMap)[column.RawType]; ok {
 
-			tableFieldsMap := &types.FieldMap{}
-			fields(tableFieldsMap, table)
+			edgeTableFieldsMap := &types.FieldMap{}
+			fields(edgeTableFieldsMap, edgeTable)
 
 			edge := &types.Edge{
 				Table:  column.RawType,
@@ -54,39 +54,41 @@ func Columns(tablesMap, typesMap *types.TypeMap, table reflect.Type) []types.Col
 			var keyFound, referenceFound bool
 
 			if edge.Unique {
-				key := choice(column.Tags.Gorm.ForeignKey, column.Name+"ID")
-				var keyLocal bool
+				key := choice(column.Tags.Gorm.ForeignKey, table.Name()+"ID")
 
-				if _, keyFound = (*tableFieldsMap)[key]; keyFound {
+				if _, keyFound = (*edgeTableFieldsMap)[key]; keyFound {
 					edge.TableKey = key
 				}
 
 				if !keyFound {
-					key = choice(column.Tags.Gorm.ForeignKey, column.RawType+"ID")
+					key = choice(column.Tags.Gorm.ForeignKey, column.Name+"ID")
 				}
 
-				if _, keyFound = (*fieldsMap)[key]; keyFound {
-					edge.LocalKey = choice(column.Tags.Gorm.ForeignKey)
-					keyLocal = true
+				var keyLocal bool
+				if !keyFound {
+					if _, keyFound = (*fieldsMap)[key]; keyFound {
+						edge.LocalKey = key
+						keyLocal = true
+					}
 				}
 
 				reference := choice(column.Tags.Gorm.References, "ID")
 				if keyLocal {
-					if _, referenceFound = (*tableFieldsMap)[key]; referenceFound {
+					if _, referenceFound = (*edgeTableFieldsMap)[reference]; referenceFound {
 						edge.TableKey = reference
 					}
 
 				} else {
-					if _, referenceFound = (*fieldsMap)[key]; referenceFound {
+					if _, referenceFound = (*fieldsMap)[reference]; referenceFound {
 						edge.LocalKey = reference
 					}
 				}
 
 			} else {
-				key := choice(column.Tags.Gorm.ForeignKey, column.RawType+"ID")
+				key := choice(column.Tags.Gorm.ForeignKey, table.Name()+"ID")
 				reference := choice(column.Tags.Gorm.References, "ID")
 
-				if _, keyFound = (*tableFieldsMap)[key]; keyFound {
+				if _, keyFound = (*edgeTableFieldsMap)[key]; keyFound {
 					edge.TableKey = key
 				}
 
@@ -132,7 +134,8 @@ func Parse(tablesArray []any, typesArray ...any) *types.Schema {
 		typesMap[t.Name()] = t
 	}
 
+	tables := Tables(&tablesMap, &typesMap)
 	return &types.Schema{
-		Tables: Tables(&tablesMap, &typesMap),
+		Tables: tables,
 	}
 }
