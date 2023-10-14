@@ -167,15 +167,18 @@ func (w *With) P(count uint, prefix, table string, relation [3]string, relations
 		for key, with := range w.With {
 			if relation, ok := (*relationsMap)[relation[0]][key]; ok {
 				subJoin, subWhere, subVars, subErr := with.P(count, prefix, table, relation, relationsMap)
-				if subErr == nil {
-					if len(subJoin) > 0 {
-						join += " " + subJoin
-					}
-					if len(subWhere) > 0 {
-						where += " AND " + subWhere
-						vars = append(subVars, vars)
-					}
+				if subErr != nil {
+					return "", "", nil, fmt.Errorf("with: cannot find relation %s for table %s", key, table)
 				}
+				if len(subJoin) > 0 {
+					join += " " + subJoin
+				}
+				if len(subWhere) > 0 {
+					where += " AND " + subWhere
+					vars = append(subVars, vars)
+				}
+			} else {
+				return "", "", nil, fmt.Errorf("with: cannot find relation %s for table %s", key, table)
 			}
 		}
 	}
