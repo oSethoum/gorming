@@ -41,7 +41,8 @@ func parseError(err error) any {
 		fieldRegex, _ := regexp.Compile(fieldPattern)
 		fieldMatch := fieldRegex.FindString(sqlError.Error())
 		if len(fieldMatch) > 0 {
-			details["field"] = strings.Split(fieldMatch, ".")[len(fieldMatch)-1]
+			splits := strings.Split(fieldMatch, ".")
+			details["field"] = splits[len(splits)-1]
 		}
 		if strings.Contains(err.Error(), "constraint") {
 			details["constraint"] = strings.ToLower(strings.Split(err.Error(), " ")[0])
