@@ -1,4 +1,4 @@
-package db
+package handlers
 
 import (
 	"errors"
@@ -43,8 +43,6 @@ type Query struct {
 	Orders   []Order           `json:"orders,omitempty"`
 	Preloads map[string]*Query `json:"preloads,omitempty"`
 }
-
-type Relations = map[string]map[string][3]string
 
 func (q *Query) P(client *gorm.DB, table string) (*gorm.DB, error) {
 	relationsMap := getRelations()
@@ -99,7 +97,11 @@ func (q *Query) P(client *gorm.DB, table string) (*gorm.DB, error) {
 	}
 
 	if len(q.Select) > 0 {
-		client = client.Select(q.Select)
+		selects := []string{}
+		for _, s := range q.Select {
+			selects = append(selects, fmt.Sprintf(`"%s"."%s"`, table, s))
+		}
+		client = client.Select(selects)
 	}
 
 	if q.Where != nil {
@@ -157,7 +159,7 @@ func (w *With) P(count uint, prefix, table string, relation [3]string, relations
 	)
 
 	if w.Where != nil {
-		where, vars, err = w.Where.P(newPrefix)
+		where, vars, err = w.Where.P(newPrefix + `.`)
 	}
 
 	if len(w.With) > 0 {
@@ -181,9 +183,14 @@ func (w *With) P(count uint, prefix, table string, relation [3]string, relations
 	return join, where, vars, err
 }
 
-func (w *Where) P(prefix string) (string, []any, error) {
+func (w *Where) P(prefixes ...string) (string, []any, error) {
 	var queries []string
 	var variables []any
+	var prefix string
+
+	if len(prefixes) > 0 {
+		prefix = prefixes[0]
+	}
 
 	if w.Not != nil {
 		q, v, err := w.Not.P(prefix)
@@ -238,7 +245,7 @@ func (w *Where) P(prefix string) (string, []any, error) {
 	if w.Field != nil {
 		var fieldQuery string
 		field := w.Field.Name
-		if isField(w.Field.Name) {
+		if !isField(w.Field.Name) {
 			return "", nil, fmt.Errorf("where: %+v has to be a valid field", field)
 		}
 		field = strings.ReplaceAll(prefix+w.Field.Name, `.`, `"."`)
@@ -296,17 +303,20 @@ func edge(s string) string {
 	return string(unicode.ToUpper(rune(s[0]))) + s[1:]
 }
 
+type Relations = map[string]map[string][3]string
+
 func getRelations() Relations {
 	return Relations{
-		{{ range .Schema.Tables }}
-         "{{ plural .Table }}": {
-         {{ range .Columns }}
-				{{ $column := . }}
-            {{ with .Edge }}
-            "{{ $column.Name }}":[3]string{"{{ plural .Table }}", "{{ .LocalKey }}", "{{ .TableKey }}"},
-            {{end}} 
-         {{end}} 
+		{{- range .Schema.Tables }}
+		   {{- $table := . -}}
+         "{{ tableName $table }}": {
+         {{ range .Columns -}}
+				{{ $column := . -}}
+            {{ with .Edge -}}
+            "{{ tsName $column }}":[3]string{"{{ tableNameString .Table }}", "{{ tsNameString .LocalKey }}", "{{ tsNameString .TableKey }}"},
+            {{ end -}} 
+         {{ end -}} 
       },
-      {{ end }}
+      {{ end -}}
 	}
 }

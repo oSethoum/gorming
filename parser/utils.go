@@ -5,14 +5,8 @@ import (
 	"strings"
 
 	"github.com/oSethoum/gorming/types"
+	"github.com/oSethoum/gorming/utils"
 )
-
-func cleanString(s string, parts ...string) string {
-	for _, part := range parts {
-		s = strings.ReplaceAll(s, part, "")
-	}
-	return s
-}
 
 func fields(fieldsMap *types.FieldMap, s reflect.Type) {
 	for i := 0; i < s.NumField(); i++ {
@@ -27,18 +21,18 @@ func fields(fieldsMap *types.FieldMap, s reflect.Type) {
 
 func tags(f reflect.StructField) types.Tags {
 	tags := types.Tags{}
-	jsonTagString := cleanString(f.Tag.Get("json"), " ")
+	jsonTagString := utils.CleanString(f.Tag.Get("json"), " ")
 
 	if len(jsonTagString) > 0 {
 		jsonTag := types.JsonTag{
 			OmitEmpty: strings.Contains(jsonTagString, "omitempty"),
 			Ignore:    strings.Contains(jsonTagString, "-"),
 		}
-		jsonTag.Name = cleanString(jsonTagString, "omitempty", ",", "-")
+		jsonTag.Name = utils.CleanString(jsonTagString, "omitempty", ",", "-")
 		tags.Json = jsonTag
 	}
 
-	gormTagString := cleanString(f.Tag.Get("gorm"), " ")
+	gormTagString := utils.CleanString(f.Tag.Get("gorm"), " ")
 	if len(gormTagString) > 0 {
 		gormTag := types.GormTag{}
 		gormTagStringArray := strings.Split(gormTagString, ";")
@@ -47,40 +41,30 @@ func tags(f reflect.StructField) types.Tags {
 				gormTag.Unique = true
 			}
 			if strings.HasPrefix(value, "foreignKey:") {
-				gormTag.ForeignKey = cleanString(value, "foreignKey:")
+				gormTag.ForeignKey = utils.CleanString(value, "foreignKey:")
 			}
 			if strings.HasPrefix(value, "references:") {
-				gormTag.References = cleanString(value, "references:")
+				gormTag.References = utils.CleanString(value, "references:")
 			}
 			if strings.HasPrefix(value, "column:") {
-				gormTag.Column = cleanString(value, "column:")
+				gormTag.Column = utils.CleanString(value, "column:")
+			}
+			if strings.HasPrefix(value, "default:") {
+				gormTag.Default = utils.CleanString(value, "default:")
 			}
 		}
 		tags.Gorm = gormTag
 	}
 
-	gormingTagString := cleanString(f.Tag.Get("gorming"), " ")
+	gormingTagString := utils.CleanString(f.Tag.Get("gorming"), " ")
 	if len(gormingTagString) > 0 {
 		gormingTag := types.GormingTag{}
 		for _, value := range strings.Split(gormingTagString, ":") {
 			if strings.HasPrefix(value, "enum") {
-				gormingTag.Enum = strings.Split(cleanString(value, "enum:"), ",")
+				gormingTag.Enum = strings.Split(utils.CleanString(value, "enum:"), ",")
 			}
 		}
 		tags.Gorming = gormingTag
 	}
 	return tags
-}
-
-func choice(primary string, backups ...string) string {
-	if primary != "" {
-		return primary
-	} else {
-		for _, backup := range backups {
-			if backup != "" {
-				return backup
-			}
-		}
-	}
-	return ""
 }

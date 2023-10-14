@@ -34,7 +34,7 @@ func parseError(err error) any {
 		errMap["type"] = "validation"
 		errMap["details"] = validationError.FieldsErrors
 	}
-	{{ if eq .Cofig.DBKind "sqlite" }}
+	{{ if eq .Config.DBKind "sqlite" }}
 	if sqlError, ok := apiError.Err.(sqlite3.Error); ok {
 		details := fiber.Map{}
 		fieldPattern := `\w+\.\w+`

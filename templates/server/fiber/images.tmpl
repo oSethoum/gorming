@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"{{ .Config.Package }}/utils"
 	"errors"
 	"path"
 
@@ -18,7 +19,7 @@ func UploadImage(c *fiber.Ctx) error {
 	images := []string{}
 	for _, file := range files {
 		ext := path.Ext(file.Filename)
-		if !inArray([]string{".jpg", ".png", ".jpeg", ".webp"}, ext) {
+		if !utils.InArray([]string{".jpg", ".png", ".jpeg", ".webp"}, ext) {
 			return Error(c, errors.New("files extension have to be in .jpg .png .jpeg .webp"))
 		}
 		filename := xid.New().String()

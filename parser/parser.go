@@ -6,23 +6,31 @@ import (
 	"strings"
 
 	"github.com/oSethoum/gorming/types"
+	"github.com/oSethoum/gorming/utils"
 )
 
-func Tables(tablesMap, typesMap *types.TypeMap) []types.Table {
+func Tables(tablesMap *types.TypeMap) []types.Table {
 	tables := []types.Table{}
 
 	for name, table := range *tablesMap {
-		tables = append(tables, types.Table{
+		_, ok := table.Type().MethodByName("Table")
+		method := table.MethodByName("Table")
+
+		newTable := types.Table{
 			Name:    name,
-			Table:   table.Name(),
-			Columns: Columns(tablesMap, typesMap, table),
-		})
+			Columns: Columns(tablesMap, table.Type()),
+		}
+		if ok {
+			newTable.Table = method.Call(nil)[0].String()
+		}
+
+		tables = append(tables, newTable)
 	}
 
 	return tables
 }
 
-func Columns(tablesMap, typesMap *types.TypeMap, table reflect.Type) []types.Column {
+func Columns(tablesMap *types.TypeMap, table reflect.Type) []types.Column {
 
 	fieldsMap := &types.FieldMap{}
 	fields(fieldsMap, table)
@@ -31,7 +39,7 @@ func Columns(tablesMap, typesMap *types.TypeMap, table reflect.Type) []types.Col
 	for name, f := range *fieldsMap {
 		slices := strings.Split(f.Type.String(), ".")
 		rawType := slices[len(slices)-1]
-		rawType = cleanString(rawType, "[]", "*")
+		rawType = utils.CleanString(rawType, "[]", "*")
 
 		column := types.Column{
 			Name:    name,
@@ -44,7 +52,7 @@ func Columns(tablesMap, typesMap *types.TypeMap, table reflect.Type) []types.Col
 		if edgeTable, ok := (*tablesMap)[column.RawType]; ok {
 
 			edgeTableFieldsMap := &types.FieldMap{}
-			fields(edgeTableFieldsMap, edgeTable)
+			fields(edgeTableFieldsMap, edgeTable.Type())
 
 			edge := &types.Edge{
 				Table:  column.RawType,
@@ -54,14 +62,14 @@ func Columns(tablesMap, typesMap *types.TypeMap, table reflect.Type) []types.Col
 			var keyFound, referenceFound bool
 
 			if edge.Unique {
-				key := choice(column.Tags.Gorm.ForeignKey, table.Name()+"ID")
+				key := utils.Choice(column.Tags.Gorm.ForeignKey, table.Name()+"ID")
 
 				if _, keyFound = (*edgeTableFieldsMap)[key]; keyFound {
 					edge.TableKey = key
 				}
 
 				if !keyFound {
-					key = choice(column.Tags.Gorm.ForeignKey, column.Name+"ID")
+					key = utils.Choice(column.Tags.Gorm.ForeignKey, column.Name+"ID")
 				}
 
 				var keyLocal bool
@@ -72,7 +80,7 @@ func Columns(tablesMap, typesMap *types.TypeMap, table reflect.Type) []types.Col
 					}
 				}
 
-				reference := choice(column.Tags.Gorm.References, "ID")
+				reference := utils.Choice(column.Tags.Gorm.References, "ID")
 				if keyLocal {
 					if _, referenceFound = (*edgeTableFieldsMap)[reference]; referenceFound {
 						edge.TableKey = reference
@@ -85,8 +93,8 @@ func Columns(tablesMap, typesMap *types.TypeMap, table reflect.Type) []types.Col
 				}
 
 			} else {
-				key := choice(column.Tags.Gorm.ForeignKey, table.Name()+"ID")
-				reference := choice(column.Tags.Gorm.References, "ID")
+				key := utils.Choice(column.Tags.Gorm.ForeignKey, table.Name()+"ID")
+				reference := utils.Choice(column.Tags.Gorm.References, "ID")
 
 				if _, keyFound = (*edgeTableFieldsMap)[key]; keyFound {
 					edge.TableKey = key
@@ -118,23 +126,23 @@ func Parse(tablesArray []any, typesArray ...any) *types.Schema {
 	typesMap := types.TypeMap{}
 
 	for _, v := range tablesArray {
-		t := reflect.TypeOf(v)
+		t := reflect.ValueOf(v)
 		for t.Kind() == reflect.Pointer {
 			t = t.Elem()
 		}
-		tablesMap[t.Name()] = t
+		tablesMap[t.Type().Name()] = t
 	}
 
-	for _, v := range tablesArray {
-		t := reflect.TypeOf(v)
+	for _, v := range typesArray {
+		t := reflect.ValueOf(v)
 		for t.Kind() == reflect.Pointer {
 			t = t.Elem()
 		}
-		typesMap[t.Name()] = t
+		typesMap[t.Type().Name()] = t
 	}
 
-	tables := Tables(&tablesMap, &typesMap)
 	return &types.Schema{
-		Tables: tables,
+		Tables: Tables(&tablesMap),
+		Types:  Tables(&typesMap),
 	}
 }

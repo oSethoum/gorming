@@ -1,18 +1,18 @@
 package routes
 
 import (
-	"{{ .Pkg }}/handlers"
-	"{{ .Pkg }}/models"
+	"{{ .Config.Package }}/handlers"
+	"{{ .Config.Package }}/models"
 
 	"github.com/gofiber/fiber/v2"
 )
 
 func routes(r fiber.Router) {
 	{{- range .Schema.Tables }}
-	{{ .Table }} := r.Group("/{{ .Table }}")
-	{{ .Table }}.Get("/", handlers.QueryResource[models.{{ .Name }}]("{{ .Table }}"))
-	{{ .Table }}.Post("/", handlers.CreateResource[models.{{ .Name }}]("{{ .Table }}"))
-	{{ .Table }}.Patch("/", handlers.UpdateResource[models.{{ .Name }}]("{{ .Table }}"))
-	{{ .Table }}.Delete("/", handlers.DeleteResource[models.{{ .Name }}]("{{ .Table }}"))
+	{{ tableName . }} := r.Group("/{{ tableName . }}")
+	{{ tableName . }}.Get("/", handlers.QueryResource[models.{{ .Name }}]("{{ tableName . }}"))
+	{{ tableName . }}.Post("/", handlers.CreateResource[models.{{ .Name }}]("{{ tableName . }}"))
+	{{ tableName . }}.Patch("/", handlers.UpdateResource[models.{{ .Name }}]("{{ tableName . }}"))
+	{{ tableName . }}.Delete("/", handlers.DeleteResource[models.{{ .Name }}]("{{ tableName . }}"))
 	{{ end }}
 }

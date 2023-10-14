@@ -1,11 +1,8 @@
-// Types
-{{- $g := . }}
-
 {{- range .Schema.Types }}
 export interface {{ .Name }} {
     {{ range .Columns -}}
-    {{- if .JsonIgnore}}{{ continue }}{{ end -}}
-    {{ .Name }}{{- if .Optional -}}?{{- end -}}: {{ .Type }};
+    {{- if .Tags.Json.Ignore}}{{ continue }}{{ end -}}
+    {{ tsName . }}{{- tsOptional . -}}: {{ tsType . }};
     {{ end -}}
 }
 {{ end }}
@@ -13,67 +10,98 @@ export interface {{ .Name }} {
 {{- range .Schema.Tables }}
 export interface {{ .Name }} {
     {{ range .Columns -}}
-    {{- if .JsonIgnore}}{{ continue }}{{ end -}}
-    {{ .Name }}{{- if .Optional -}}?{{- end -}}: {{ .Type }};
+    {{ $column := . }}
+    {{- if .Tags.Json.Ignore}}{{ continue }}{{ end -}}
+    {{-  with .Edge -}}
+    {{ tsName $column }}?: {{ tsType $column }};
+    {{- else -}}
+    {{ tsName $column }}{{- tsOptional $column -}}: {{ tsType $column }};
+    {{- end -}}
     {{ end -}}
 }
 {{ end }}
 
-// Schema
 {{- range .Schema.Tables }}
-  export type {{ .Name }}Relations =  {{ if .HasRelations }} {{ .Relations }} {{ else }} "" {{ end }};
-  export type {{ .Name }}Preloads = { 
-    {{ range .Preloads }}
-    {{ .Name }}?: TQuery<"{{ .Table }}">;
+  export type {{ .Name }}Relations = {
+    {{ range .Columns -}}
+    {{- $column := . -}}
+    {{ with .Edge }}
+    {{ tsName $column }}:"{{ tableNameString .Table }}";
     {{ end }}
+    {{- end }}
   };
-  export type {{ .Name }}Fields = Omit<{{ .Name }}, keyof {{ .Name }}Preloads{{ .GormIgnored }}>;
+
+  export type {{ .Name }}Fields = Omit<{{ .Name }}, keyof {{ .Name }}Relations>;
+  export type {{ .Name }}UniqueRelations = "{{ uniqueRelations . }}";
+
   export type {{ .Name }}CreateInput = {
     {{- range .Columns -}}
-      {{- if .JsonIgnore }}{{ continue }}{{end}}
-      {{- if .Edge }}
-      {{ .Name }}?: {{ .RawType }}CreateInput{{- if .Slice}}[]{{- end -}};
+      {{- $column := . -}}
+      {{- if .Tags.Json.Ignore }}{{ continue }}{{end}}
+      {{- with .Edge }}
+      {{ tsName $column }}?: {{- $omit := tsCreateOmit $column -}} {{ if $omit.Should }} MakeOptional<{{ $column.RawType }}CreateInput, "{{ $omit.Field }}"> {{- else -}} {{ $column.RawType }}CreateInput{{- end -}}{{- if $column.Slice}}[]{{- end -}};
       {{- else }}
-      {{ .Name }}{{- if or .OptionalCreate .Optional -}}?{{- end -}}: {{ .Type }};
+      {{ tsName $column }}{{- tsOptionalCreate $column  -}}: {{ tsType $column }};
       {{- end }}
     {{- end }}
   };
+
   export type {{ .Name }}UpdateInput = {
     {{- range .Columns -}}
-      {{- if .JsonIgnore }}{{ continue }}{{end}}
-      {{- if .Edge }}
-      {{ .Name }}?: {{ .RawType }}UpdateInput{{- if .Slice}}[]{{- end -}};
+    {{- $column := . -}}
+      {{- if .Tags.Json.Ignore }}{{ continue }}{{end}}
+      {{- with .Edge }}
+      {{ tsName $column }}?: {{ $column.RawType }}UpdateInput{{- if $column.Slice}}[]{{- end -}};
       {{- else }}
-      {{ .Name }}?: {{ .Type }};
+      {{ tsName $column }}?: {{ tsType $column }};
       {{- end }}
     {{- end }}
   };
 {{ end }}
 
 export type TSchema = {
-  {{ range .Tables }}
-  {{ .Table }}: {
+  {{ range .Schema.Tables }}
+  {{ tableName . }}: {
     fields: {{ .Name }}Fields;
     type: {{ .Name }};
     create: {{ .Name }}CreateInput;
     update: {{ .Name }}UpdateInput;
-    preloads: {{ .Name }}Preloads;
-    relations: {{ .Name }}Relations;
+    preloads: {
+         [K in keyof {{ .Name }}Relations]?: K extends {{ .Name }}UniqueRelations
+            ? Omit<TQuery<{{ .Name }}Relations[K]>, "offset" | "limit" | "where" | "orders">
+            : TQuery<{{ .Name }}Relations[K]>;
+      };
+      with: {
+         [K in keyof {{ .Name }}Relations]?: {
+            with?: TWith<{{ .Name }}Relations[K]>;
+            where: TWhere<{{ .Name }}Relations[K]>;
+         };
+      };
   };
   {{ end }}
 };
 
-// Query
-export type TWhere<T> = {
-  not?: TWhere<T>;
-  and?: Array<TWhere<T>>;
-  or?: Array<TWhere<T>>;
-  field?: TField<T>;
+export type TWhere<T extends keyof TSchema> = {
+   not?: TWhere<T>;
+   and?: Array<TWhere<T>>;
+   or?: Array<TWhere<T>>;
+   field?: TField<T>;
 };
 
-export type TOrder<T> = {
-  field: keyof T;
-  direction: "ASC" | "DESC";
+export type TField<T extends keyof TSchema> =
+   | {
+        name: keyof TSchema[T]["fields"];
+        predicate: TNullPredicate;
+     }
+   | {
+        name: keyof TSchema[T]["fields"];
+        predicate: TPredicate;
+        value: any;
+     };
+
+export type TOrder<T extends keyof TSchema> = {
+   field: keyof TSchema[T]["fields"];
+   direction: "ASC" | "DESC";
 };
 
 export type TPredicate =
@@ -90,37 +118,18 @@ export type TPredicate =
 
 export type TNullPredicate = "null" | "not null";
 
-type TJoin<T extends keyof TSchema> = {
-  [Key in TSchema[T]["relations"]]?: Key extends keyof TSchema
-    ? {
-        on: [
-          `${T}.${string & keyof TSchema[T]["fields"]}`,
-          `${Key}.${string & keyof TSchema[Key]["fields"]}`
-        ];
-        join?: TJoin<Exclude<Key, T>>;
-        where?: TWhere<`${Key}.${string & keyof TSchema[Key]["fields"]}`>;
-      }
-    : undefined;
-};
-
-export type TField<T> =
-   | {
-        name: T;
-        predicate: TNullPredicate;
-     }
-   | {
-        name: T;
-        predicate: TPredicate;
-        value: any;
-     };
+type TWith<T extends keyof TSchema> = TSchema[T]["with"];
 
 export type TQuery<T extends keyof TSchema> = {
-  select?: Array<keyof TSchema[T]["fields"]>;
-  join?: TJoin<T>;
-  omit?: Array<keyof TSchema[T]["fields"]>;
-  offset?: number;
-  limit?: number;
-  orders?: Array<TOrder<TSchema[T]["fields"]>>;
-  where?: TWhere<keyof TSchema[T]["fields"]>;
-  preloads?: TSchema[T]["preloads"];
+   select?: Array<keyof TSchema[T]["fields"]>;
+   with?: TWith<T>;
+   omit?: Array<keyof TSchema[T]["fields"]>;
+   offset?: number;
+   limit?: number;
+   orders?: Array<TOrder<T>>;
+   where?: TWhere<T>;
+   preloads?: TSchema[T]["preloads"];
 };
+
+// helpers
+type MakeOptional<T, K extends keyof T> = Omit<T, K> & { [P in K]?: T[P] };

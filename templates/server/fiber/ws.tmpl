@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"sync"
+	"{{ .Config.Package }}/utils"
 
 	"github.com/gofiber/contrib/websocket"
 )
@@ -96,11 +97,11 @@ func Subscription(c *websocket.Conn) {
 		switch m.Action {
 		case ActionSubscribe:
 			var appended = []string{}
-			events, appended = appendValues(events, m.Events...)
+			events, appended = utils.AppendValues(events, m.Events...)
 			subscribe(appended, c)
 		case ActionUnsubscribe:
 			var removed = []string{}
-			events, removed = removeValues(events, m.Events...)
+			events, removed = utils.RemoveValues(events, m.Events...)
 			unsubscribe(removed, c)
 		case ActionUnsubscribeAll:
 			unsubscribe(events, c)

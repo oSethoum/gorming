@@ -9,15 +9,18 @@ type Server int
 type FilesAction bool
 
 const (
-	DB = iota
-	Roues
+	DB = iota + 10
+	Routes
 	Handler
+	Model
+	Migrate
 	Query
 	Images
 	Error
 	Response
 	Ws
 	Privacy
+	Utils
 	Api
 	Types
 )
@@ -29,8 +32,9 @@ const (
 )
 
 const (
-	Camel = iota + 20
+	Camel = iota + 1
 	Pascal
+	Snake
 )
 
 const (
@@ -38,14 +42,24 @@ const (
 	DoNotGenerate = false
 )
 
-type TypeMap map[string]reflect.Type
+type Engine = func(tables []any, types ...any)
+type TypeMap map[string]reflect.Value
 type FieldMap map[string]reflect.StructField
+
+type Paths struct {
+	BasePath         string `json:"base_path,omitempty"`
+	TypescriptClient string `json:"typescript_client,omitempty"`
+	DartClient       string `json:"dart_client,omitempty"`
+}
 
 type Config struct {
 	DBKind      DBKind      `json:"db_kind,omitempty"`
 	Case        Case        `json:"case,omitempty"`
 	FilesAction FilesAction `json:"files_action,omitempty"`
+	Paths       Paths       `json:"paths,omitempty"`
+	Debug       bool        `json:"debug,omitempty"`
 	Fiels       []File      `json:"fiels,omitempty"`
+	Package     string      `json:"package,omitempty"`
 }
 
 type Schema struct {
@@ -54,9 +68,10 @@ type Schema struct {
 }
 
 type Table struct {
-	Name    string   `json:"name,omitempty"`
-	Table   string   `json:"table,omitempty"`
-	Columns []Column `json:"columns,omitempty"`
+	Name         string   `json:"name,omitempty"`
+	Table        string   `json:"table,omitempty"`
+	HasTableFunc bool     `json:"has_table_func,omitempty"`
+	Columns      []Column `json:"columns,omitempty"`
 }
 
 type Tags struct {
@@ -76,6 +91,7 @@ type GormTag struct {
 	Unique     bool   `json:"unique,omitempty"`
 	ForeignKey string `json:"foreign_key,omitempty"`
 	References string `json:"reference,omitempty"`
+	Ignore     bool   `json:"ignore,omitempty"`
 }
 
 type GormingTag struct {
@@ -96,11 +112,10 @@ type Edge struct {
 }
 
 type Column struct {
-	Name     string `json:"name,omitempty"`
-	Type     string `json:"type,omitempty"`
-	RawType  string `json:"raw_type,omitempty"`
-	Optional bool   `json:"optional,omitempty"`
-	Edge     *Edge  `json:"edge,omitempty"`
-	Slice    bool   `json:"slice,omitempty"`
-	Tags     Tags   `json:"tags,omitempty"`
+	Name    string `json:"name,omitempty"`
+	Type    string `json:"type,omitempty"`
+	RawType string `json:"raw_type,omitempty"`
+	Edge    *Edge  `json:"edge,omitempty"`
+	Slice   bool   `json:"slice,omitempty"`
+	Tags    Tags   `json:"tags,omitempty"`
 }
