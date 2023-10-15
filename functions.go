@@ -1,6 +1,7 @@
 package gorming
 
 import (
+	"fmt"
 	"strings"
 	"text/template"
 
@@ -55,6 +56,20 @@ func templateFunctions(data *types.TemplateData) template.FuncMap {
 			tablesString = append(tablesString, t.Name)
 		}
 		return strings.Join(tablesString, ` | `)
+	}
+
+	dartCreateOptionalFunc := func(column types.Column) bool {
+		return utils.In(column.Name, "ID", "CreatedAt", "UpdatedAt", "DeletedAt") ||
+			strings.HasPrefix(column.Type, "*") || column.Edge != nil || strings.HasSuffix(column.Name, "ID") ||
+			len(column.Tags.Gorm.Default) > 0
+
+	}
+
+	dartCreateOptionalStringFunc := func(column types.Column) string {
+		if dartCreateOptionalFunc(column) {
+			return "?"
+		}
+		return ""
 	}
 
 	tsCreateOmitFunc := func(column types.Column) struct {
@@ -140,7 +155,7 @@ func templateFunctions(data *types.TemplateData) template.FuncMap {
 
 	tsOptionalCreateFunc := func(column types.Column) string {
 		if utils.In(column.Name, "ID", "CreatedAt", "UpdatedAt", "DeletedAt") ||
-			strings.HasPrefix(column.Type, "*") ||
+			strings.HasPrefix(column.Type, "*") || column.Edge != nil ||
 			len(column.Tags.Gorm.Default) > 0 {
 			return "?"
 		}
@@ -148,24 +163,83 @@ func templateFunctions(data *types.TemplateData) template.FuncMap {
 	}
 
 	tsOptionalFunc := func(column types.Column) string {
-		if utils.In(column.Name, "DeletedAt") || strings.HasPrefix(column.Type, "*") ||
+		if utils.In(column.Name, "DeletedAt") || strings.HasPrefix(column.Type, "*") || column.Slice ||
 			len(column.Tags.Gorm.Default) > 0 {
 			return "?"
 		}
 		return ""
 	}
 
+	columnOptionalFunc := func(column types.Column) bool {
+		return utils.In(column.Name, "DeletedAt") || strings.HasPrefix(column.Type, "*") ||
+			len(column.Tags.Gorm.Default) > 0 || column.Slice || column.Edge != nil
+	}
+
+	columnOptionalCreateFunc := func(column types.Column) bool {
+		return utils.In(column.Name, "ID", "CreatedAt", "UpdatedAt", "DeletedAt") ||
+			strings.HasPrefix(column.Type, "*") ||
+			len(column.Tags.Gorm.Default) > 0 || column.Edge != nil
+	}
+
+	dartTypeFunc := func(column types.Column, mode ...string) string {
+
+		t := column.RawType
+		typesMap := map[string]string{
+			"Time":   "DateTime",
+			"bool":   "bool",
+			"int":    "int",
+			"uint":   "int",
+			"float":  "double",
+			"string": "String",
+		}
+
+		for k, v := range typesMap {
+			if strings.HasPrefix(k, column.RawType) {
+				t = v
+			}
+		}
+
+		if strings.Contains(column.Type, "gorm.DeletedAt") {
+			t = "String"
+		}
+
+		if column.Edge != nil && len(mode) > 0 && mode[0] == "create" {
+			t += "CreateInput"
+		}
+
+		if column.Edge != nil && len(mode) > 0 && mode[0] == "update" {
+			t += "UpdateInput"
+		}
+
+		if strings.Contains(column.Type, "[]") {
+			t = fmt.Sprintf("List<%s>", t)
+		}
+
+		return t
+
+	}
+
+	dartNameFunc := func(column types.Column) string {
+		return utils.Camel(column.Name)
+	}
+
 	return template.FuncMap{
-		"plural":           inflection.Plural,
-		"models":           modelsFunc,
-		"tsName":           tsNameFunc,
-		"tsNameString":     tsNameStringFunc,
-		"tableName":        tableNameFunc,
-		"tableNameString":  tableNameStringFunc,
-		"tsType":           tsTypeFunc,
-		"uniqueRelations":  uniqueRelationsFunc,
-		"tsOptionalCreate": tsOptionalCreateFunc,
-		"tsOptional":       tsOptionalFunc,
-		"tsCreateOmit":     tsCreateOmitFunc,
+		"plural":                   inflection.Plural,
+		"models":                   modelsFunc,
+		"tsName":                   tsNameFunc,
+		"tsNameString":             tsNameStringFunc,
+		"tableName":                tableNameFunc,
+		"tableNameString":          tableNameStringFunc,
+		"tsType":                   tsTypeFunc,
+		"columnOptional":           columnOptionalFunc,
+		"columnOptionalCreate":     columnOptionalCreateFunc,
+		"uniqueRelations":          uniqueRelationsFunc,
+		"tsOptionalCreate":         tsOptionalCreateFunc,
+		"tsOptional":               tsOptionalFunc,
+		"tsCreateOmit":             tsCreateOmitFunc,
+		"dartType":                 dartTypeFunc,
+		"dartName":                 dartNameFunc,
+		"dartOptionalCreate":       dartCreateOptionalFunc,
+		"dartOptionalCreateString": dartCreateOptionalStringFunc,
 	}
 }

@@ -38,7 +38,10 @@ func New(config types.Config) types.Engine {
 		writeTemplate("server/fiber/ws", "handlers/ws.go", data, types.Ws)
 		writeTemplate("server/fiber/routes", "routes/routes.go", data, types.Routes)
 
-		writeTemplate("client/typescript/api", path.Join(data.Config.Paths.TypescriptClient, "api.ts"), data, types.Api)
-		writeTemplate("client/typescript/types", path.Join(data.Config.Paths.TypescriptClient, "types.ts"), data, types.Types)
+		writeTemplate("client/typescript/api", path.Join(data.Config.Paths.TypescriptClient, "api.ts"), data, types.TsApi)
+		writeTemplate("client/typescript/types", path.Join(data.Config.Paths.TypescriptClient, "types.ts"), data, types.TsTypes)
+
+		writeTemplate("client/dart/api", path.Join(data.Config.Paths.DartClient, "api.dart"), data, types.DartApi)
+		writeTemplate("client/dart/types", path.Join(data.Config.Paths.DartClient, "types.dart"), data, types.DartTypes)
 	}
 }

@@ -1,0 +1,211 @@
+import 'dart:convert';
+import 'package:dio/dio.dart';
+import 'package:json_annotation/json_annotation.dart';
+import './types.dart';
+
+part 'api.g.dart';
+
+class Api {
+  String url;
+  final dio = Dio();
+
+  Map<Resource, String> resources = {
+   {{ range .Schema.Tables -}}
+    Resource.{{ tableName . }}: "{{ tableName . }}",
+    {{ end -}}
+  };
+
+  Map<Resource, Serializer> serializers = {
+   {{ range .Schema.Tables -}}
+    Resource.{{ tableName . }}: (dynamic json) => {{ .Name }}.fromJson(json),
+    {{ end -}}
+  };
+
+  Api({required this.url});
+
+  Future<ApiResponse<QueryResponse<T>>> query<T>(
+      Resource resource, query) async {
+    final response = await dio.get(
+      '$url/${resources[resource]}?query=${jsonEncode(query).toString()}',
+      options: Options(
+        followRedirects: false,
+        validateStatus: (status) => status != null && status <= 500,
+      ),
+    );
+
+    return ApiResponse<QueryResponse<T>>.fromJson(
+      response.data,
+      (dynamic json) => QueryResponse.fromJson(
+        json,
+        serializers[resource] as T Function(Object?),
+      ),
+    );
+  }
+
+   Future<ApiResponse<List<T>>> create<T>(Resource resource, input) async {
+    final response = await dio.post(
+      '$url/${resources[resource]}',
+      data: jsonEncode(input),
+      options: Options(
+        contentType: Headers.jsonContentType,
+        followRedirects: false,
+        validateStatus: (status) => status != null && status <= 500,
+      ),
+    );
+
+    return ApiResponse<List<T>>.fromJson(
+      response.data,
+      (dynamic json) => convertListToModel(
+          serializers[resource] as T Function(Object?), json),
+    );
+  }
+
+  Future<ApiResponse<List<T>>> update<T>(Resource resource, input) async {
+    final response = await dio.patch(
+      '$url/${resources[resource]}',
+      data: jsonEncode(input),
+      options: Options(
+        contentType: Headers.jsonContentType,
+        followRedirects: false,
+        validateStatus: (status) => status != null && status <= 500,
+      ),
+    );
+
+    return ApiResponse<List<T>>.fromJson(
+      response.data,
+      (dynamic json) => convertListToModel(
+          serializers[resource] as T Function(Object?), json),
+    );
+  }
+
+  Future<ApiResponse<List<T>>> delete<T>(Resource resource, where) async {
+    final response = await dio.delete(
+      '$url/${resources[resource]}',
+      data: jsonEncode(where),
+      options: Options(
+        followRedirects: false,
+        contentType: Headers.jsonContentType,
+        validateStatus: (status) => status != null && status <= 500,
+      ),
+    );
+
+    return ApiResponse<List<T>>.fromJson(
+      response.data,
+      (dynamic json) => convertListToModel(
+          serializers[resource] as T Function(Object?), json),
+    );
+  }
+}
+
+
+
+@JsonSerializable()
+class ValidationError {
+  String field;
+  String tag;
+  String? param;
+  String value;
+
+  ValidationError({
+    required this.field,
+    required this.tag,
+    this.param,
+    required this.value,
+  });
+
+  factory ValidationError.fromJson(Map<String, dynamic> json) =>
+      _$ValidationErrorFromJson(json);
+  Map<String, dynamic> toJson() => _$ValidationErrorToJson(this);
+}
+
+@JsonSerializable()
+class DatabaseError {
+  String? field;
+  String constraint;
+
+  DatabaseError({
+    this.field,
+    required this.constraint,
+  });
+
+  factory DatabaseError.fromJson(Map<String, dynamic> json) =>
+      _$DatabaseErrorFromJson(json);
+  Map<String, dynamic> toJson() => _$DatabaseErrorToJson(this);
+}
+
+@JsonSerializable()
+class ApiResponseError {
+  String type;
+  int? index;
+  String message;
+  ValidationError? validation;
+  DatabaseError? database;
+
+  ApiResponseError({
+    required this.type,
+    this.index,
+    required this.message,
+    this.validation,
+    this.database,
+  });
+
+  factory ApiResponseError.fromJson(Map<String, dynamic> json) =>
+      _$ApiResponseErrorFromJson(json);
+  Map<String, dynamic> toJson() => _$ApiResponseErrorToJson(this);
+}
+
+@JsonSerializable()
+class QueryResponse<T> {
+  int count;
+  List<T> result;
+
+  QueryResponse({
+    required this.count,
+    required this.result,
+  });
+
+  factory QueryResponse.fromJson(
+    Map<String, dynamic> json,
+    T Function(Object? json) fromJsonT,
+  ) =>
+      _$QueryResponseFromJson(json, fromJsonT);
+
+  Map<String, dynamic> toJson(Map<String, dynamic> Function(T value) toJsonT) =>
+      _$QueryResponseToJson(this, toJsonT);
+}
+
+
+@JsonSerializable()
+class ApiResponse<T> {
+  int code;
+  String status;
+  ApiResponseError? error;
+  T? data;
+
+  ApiResponse({
+    required this.code,
+    required this.status,
+    this.error,
+    this.data,
+  });
+
+  factory ApiResponse.fromJson(
+    Map<String, dynamic> json,
+    T Function(Object? json) fromJsonT,
+  ) =>
+      _$ApiResponseFromJson(json, fromJsonT);
+
+  Map<String, dynamic> toJson(Object Function(T value) toJsonT) =>
+      _$ApiResponseToJson(this, toJsonT);
+}
+
+enum Resource {
+  {{ range .Schema.Tables -}}
+  {{ tableName . }},
+  {{ end -}}
+}
+
+List<T> convertListToModel<T>(T Function(Object? json) fromJson, List data) =>
+    data.map((e) => fromJson(e)).toList();
+
+typedef Serializer<T> = T Function(Object?);
