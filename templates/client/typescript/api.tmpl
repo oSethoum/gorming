@@ -1,32 +1,25 @@
 import type { TQuery, TSchema } from "./types";
 
-export type ResponseError =
-   | {
-        type: "validation";
-        details: Array<{
-           field: string;
-           tag: string;
-           param?: string;
-           value: string;
-        }>;
-     }
-   | {
-        type: "database";
-        details: {
-           field?: string;
-           constraint?: string;
-           error: string;
-        };
-     }
-   | {
-        type: "other";
-        details: any;
-     };
+export type ApiResponseError = {
+   type: "validation" | "database" | "other";
+   index?: number;
+   message: string;
+   validation?: Array<{
+      field: string;
+      tag: string;
+      param?: string;
+      value: string;
+   }>;
+   database?: {
+      field?: string;
+      constraint?: string;
+   };
+};
 
-export type Response<T> = {
+export type ApiResponse<T> = {
    code: number;
    data?: T;
-   error?: ResponseError;
+   error?: ApiResponseError;
    status: "success" | "error";
 };
 
@@ -98,7 +91,7 @@ export class Api {
       this.baseURL = url.replace(/\/+$/, "");
    }
 
-   async request<T>(url: string, init?: RequestInit): Promise<Response<T>> {
+   async request<T>(url: string, init?: RequestInit): Promise<ApiResponse<T>> {
       const method = init?.method || "GET";
       const headers = {
          ...init?.headers,
@@ -116,7 +109,7 @@ export class Api {
          ? `/${resource}?query=${encodeURIComponent(JSON.stringify(query))}`
          : `/${resource}`;
       return this.request<
-         { [key in T]: Array<TSchema[T]["type"]> } & { count: number }
+         { result: Array<TSchema[T]["type"]>, count: number }
       >(url);
    }
 

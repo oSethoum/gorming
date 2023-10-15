@@ -25,10 +25,10 @@ export interface {{ .Name }} {
   export type {{ .Name }}Relations = {
     {{ range .Columns -}}
     {{- $column := . -}}
-    {{ with .Edge }}
+    {{ with .Edge -}}
     {{ tsName $column }}:"{{ tableNameString .Table }}";
-    {{ end }}
-    {{- end }}
+    {{ end -}}
+    {{ end -}}
   };
 
   export type {{ .Name }}Fields = Omit<{{ .Name }}, keyof {{ .Name }}Relations>;
@@ -60,7 +60,7 @@ export interface {{ .Name }} {
 {{ end }}
 
 export type TSchema = {
-  {{ range .Schema.Tables }}
+  {{ range .Schema.Tables -}}
   {{ tableName . }}: {
     fields: {{ .Name }}Fields;
     type: {{ .Name }};
