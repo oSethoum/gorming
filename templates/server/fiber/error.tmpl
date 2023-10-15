@@ -5,58 +5,49 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/gofiber/fiber/v2"
 	sqlite3 "github.com/mutecomm/go-sqlcipher/v4"
 	"github.com/oSethoum/validator"
 )
 
-type ApiError struct {
-	Err   error
-	Index int
+type ApiResponseError struct {
+	MainError error
+	Index     int
 }
 
-func (e ApiError) Error() string {
-	return fmt.Sprintf("%s, index: %d", e.Err.Error(), e.Index)
+func (err ApiResponseError) Error() string {
+	return fmt.Sprintf("error: %s |- index: %d", err.MainError.Error(), err.Index)
 }
 
-func parseError(err error) any {
-	apiError, isApiErr := err.(ApiError)
-	errMap := fiber.Map{
+func (e *ApiResponseError) Parse() any {
+
+	errorMap := map[string]any{
 		"type":    "other",
-		"details": err.Error(),
-	}
-	if isApiErr && apiError.Err != nil {
-		err = apiError.Err
-		errMap["index"] = apiError.Index
+		"index":   e.Index,
+		"message": e.Error(),
 	}
 
-	if validationError, ok := apiError.Err.(*validator.Error); ok {
-		errMap["type"] = "validation"
-		errMap["details"] = validationError.FieldsErrors
+	if mainError, ok := e.MainError.(*validator.Error); ok {
+		errorMap["type"] = "validation"
+		errorMap["validation"] = mainError.FieldsErrors
 	}
-	{{ if eq .Config.DBKind "sqlite" }}
-	if sqlError, ok := apiError.Err.(sqlite3.Error); ok {
-		details := fiber.Map{}
-		fieldPattern := `\w+\.\w+`
-		fieldRegex, _ := regexp.Compile(fieldPattern)
-		fieldMatch := fieldRegex.FindString(sqlError.Error())
-		if len(fieldMatch) > 0 {
-			splits := strings.Split(fieldMatch, ".")
-			details["field"] = splits[len(splits)-1]
-		}
-		if strings.Contains(err.Error(), "constraint") {
-			details["constraint"] = strings.ToLower(strings.Split(err.Error(), " ")[0])
 
+	if mainError, ok := e.MainError.(sqlite3.Error); ok {
+		errorMap["type"] = "database"
+
+		details := map[string]any{}
+		field := regexp.MustCompile(`\w+\.\w+`).FindString(mainError.Error())
+
+		if len(field) > 0 {
+			details["field"] = field
 		}
-		details["error"] = err.Error()
-		errMap["type"] = "database"
-		errMap["index"] = apiError.Index
-		errMap["details"] = details
+
+		constraint := regexp.MustCompile(`\w+ constraint`).FindString(mainError.Error())
+
+		if len(constraint) > 0 {
+			details["constraint"] = strings.Split(constraint, " ")[0]
+		}
+		errorMap["database"] = details
 	}
-	{{ end }}
-	{{ if eq .Config.DBKind "mysql" }}
-	{{ end }}
-	{{ if eq .Config.DBKind "postgres" }}
-	{{ end }}
-	return errMap
+
+	return errorMap
 }

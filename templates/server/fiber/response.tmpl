@@ -21,9 +21,17 @@ func Error(c *fiber.Ctx, err error, status ...int) error {
 	if len(status) > 0 {
 		code = status[0]
 	}
-	return c.Status(code).JSON(fiber.Map{
+
+	response := fiber.Map{
 		"code":   code,
 		"status": "error",
-		"error":  parseError(err),
-	})
+	}
+
+	if apiResponseError, ok := err.(ApiResponseError); ok {
+		response["error"] = apiResponseError.Parse()
+	} else {
+		response["error"] = (&ApiResponseError{MainError: err, Index: -1}).Parse()
+	}
+
+	return c.Status(code).JSON(response)
 }

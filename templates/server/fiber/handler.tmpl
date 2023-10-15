@@ -11,7 +11,7 @@ import (
 
 func QueryResource[T models.Model](resource string) fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		data := new([]T)
+		result := new([]T)
 		query := new(Query)
 		q := c.Query("query", "{}")
 		err := json.Unmarshal([]byte(q), query)
@@ -23,13 +23,13 @@ func QueryResource[T models.Model](resource string) fiber.Handler {
 			return Error(c, err)
 		}
 		var count int64
-		err = client.Find(data).Count(&count).Error
+		err = client.Find(result).Count(&count).Error
 		if err != nil {
 			return Error(c, err)
 		}
-		result := fiber.Map{"count": count, resource: data}
+		data := fiber.Map{"count": count, "result": result}
 		go Broadcast(resource+":query", result)
-		return Success(c, result)
+		return Success(c, data)
 	}
 }
 
@@ -43,7 +43,7 @@ func CreateResource[T models.Model](resource string) fiber.Handler {
 		err = db.Client.WithContext(c.UserContext()).Transaction(func(tx *gorm.DB) error {
 			for i, v := range *body {
 				if err := tx.Create(&v).Error; err != nil {
-					return ApiError{Err: err, Index: i}
+					return ApiResponseError{MainError: err, Index: i}
 				}
 			}
 			return nil
@@ -67,7 +67,7 @@ func UpdateResource[T models.Model](resource string) fiber.Handler {
 			for i, v := range *body {
 				err := tx.Updates(&v).Error
 				if err != nil {
-					return ApiError{Err: err, Index: i}
+					return ApiResponseError{MainError: err, Index: i}
 				}
 			}
 			return nil
@@ -101,4 +101,3 @@ func DeleteResource[T models.Model](resource string) fiber.Handler {
 		return Success(c, body)
 	}
 }
-
