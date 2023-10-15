@@ -19,7 +19,10 @@ func parseTemplate(templateName string, data types.TemplateData) *bytes.Buffer {
 		log.Fatalf("gorming: error parsing templates %s, %s \n", templateName, err.Error())
 	}
 	buffer := new(bytes.Buffer)
-	engine, _ := template.New(templateName).Funcs(templateFunctions(&data)).Parse(string(file))
+	engine, err := template.New(templateName).Funcs(templateFunctions(&data)).Parse(string(file))
+	if err != nil {
+		log.Fatalf("gorming: error executing template %s, %s \n", templateName, err.Error())
+	}
 	err = engine.Execute(buffer, data)
 	if err != nil {
 		log.Fatalf("gorming: error executing template %s, %s \n", templateName, err.Error())
@@ -53,8 +56,8 @@ func defaultConfig(config types.Config) types.Config {
 	config.Package = utils.Choice(config.Package, pkg)
 	config.Case = utils.Choice(config.Case, types.Snake)
 	config.DBKind = utils.Choice(config.DBKind, types.SQLite)
-	config.Paths.TypescriptClient = utils.Choice(config.Paths.TypescriptClient, "client/gorming/")
-	config.Paths.DartClient = utils.Choice(config.Paths.DartClient, "client/dart/")
+	config.Paths.TypescriptClient = utils.Choice(config.Paths.TypescriptClient, "client/typescript/gorming")
+	config.Paths.DartClient = utils.Choice(config.Paths.DartClient, "client/dart/gorming")
 	config.Paths.BasePath = utils.Choice(config.Paths.BasePath, basePath)
 	return config
 }
