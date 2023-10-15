@@ -7,6 +7,7 @@ type DBKind string
 type Case float64
 type Server int
 type FilesAction bool
+type IgnoreHandler byte
 
 const (
 	DB = iota + 10
@@ -21,8 +22,10 @@ const (
 	Ws
 	Privacy
 	Utils
-	Api
-	Types
+	DartApi
+	DartTypes
+	TsApi
+	TsTypes
 )
 
 const (
@@ -53,13 +56,14 @@ type Paths struct {
 }
 
 type Config struct {
-	DBKind      DBKind      `json:"db_kind,omitempty"`
-	Case        Case        `json:"case,omitempty"`
-	FilesAction FilesAction `json:"files_action,omitempty"`
-	Paths       Paths       `json:"paths,omitempty"`
-	Debug       bool        `json:"debug,omitempty"`
-	Fiels       []File      `json:"fiels,omitempty"`
-	Package     string      `json:"package,omitempty"`
+	DBKind         DBKind                     `json:"db_kind,omitempty"`
+	Case           Case                       `json:"case,omitempty"`
+	FilesAction    FilesAction                `json:"files_action,omitempty"`
+	Paths          Paths                      `json:"paths,omitempty"`
+	Debug          bool                       `json:"debug,omitempty"`
+	Fiels          []File                     `json:"fiels,omitempty"`
+	IgnoreHandlers map[string][]IgnoreHandler `json:"ignore_handlers,omitempty"`
+	Package        string                     `json:"package,omitempty"`
 }
 
 type Schema struct {
