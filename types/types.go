@@ -51,19 +51,19 @@ type FieldMap map[string]reflect.StructField
 
 type Paths struct {
 	BasePath         string `json:"base_path,omitempty"`
+	BackendPath      string `json:"backend_path,omitempty"`
 	TypescriptClient string `json:"typescript_client,omitempty"`
 	DartClient       string `json:"dart_client,omitempty"`
 }
 
 type Config struct {
-	DBKind         DBKind                     `json:"db_kind,omitempty"`
-	Case           Case                       `json:"case,omitempty"`
-	FilesAction    FilesAction                `json:"files_action,omitempty"`
-	Paths          Paths                      `json:"paths,omitempty"`
-	Debug          bool                       `json:"debug,omitempty"`
-	Fiels          []File                     `json:"fiels,omitempty"`
-	IgnoreHandlers map[string][]IgnoreHandler `json:"ignore_handlers,omitempty"`
-	Package        string                     `json:"package,omitempty"`
+	DBKind      DBKind      `json:"db_kind,omitempty"`
+	Case        Case        `json:"case,omitempty"`
+	FilesAction FilesAction `json:"files_action,omitempty"`
+	Paths       Paths       `json:"paths,omitempty"`
+	Debug       bool        `json:"debug,omitempty"`
+	Fiels       []File      `json:"fiels,omitempty"`
+	Package     string      `json:"package,omitempty"`
 }
 
 type Schema struct {
@@ -76,11 +76,12 @@ type Table struct {
 	Table        string   `json:"table,omitempty"`
 	HasTableFunc bool     `json:"has_table_func,omitempty"`
 	Columns      []Column `json:"columns,omitempty"`
+	Skip         []string `json:"skip,omitempty"`
 }
 
 type Tags struct {
 	Gorm    GormTag    `json:"gorm,omitempty"`
-	Gorming GormingTag `json:"gorming,omitempty"`
+	Gorming GormingTag `json:"gorming_tag,omitempty"`
 	Json    JsonTag    `json:"json,omitempty"`
 }
 
@@ -99,7 +100,11 @@ type GormTag struct {
 }
 
 type GormingTag struct {
-	Enum []string `json:"enum,omitempty"`
+	TsType      string   `json:"ts_type,omitempty"`
+	DartType    string   `json:"dart_type"`
+	SwaggerType string   `json:"swagger_type,omitempty"`
+	Skip        []string `json:"skip,omitempty"`
+	Enum        []string `json:"enum,omitempty"`
 }
 
 type JsonTag struct {

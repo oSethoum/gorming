@@ -3,7 +3,7 @@ package utils
 import (
 	"log"
 	"os"
-	"path"
+	"path/filepath"
 	"strings"
 
 	"github.com/iancoleman/strcase"
@@ -54,14 +54,16 @@ func CurrentGoMod() (string, string) {
 		log.Fatalln(err)
 	}
 
-label:
-	if data, err := os.ReadFile(path.Join(cwd, "go.mod")); err == nil {
-		return cwd, CleanString(strings.Split(strings.Split(string(data), "\n")[0], " ")[1])
-	} else {
-		cwd = path.Dir(cwd)
-		if len(cwd) == 0 {
-			log.Fatalln("cannot find go.mod")
+	for {
+		if data, err := os.ReadFile(filepath.Join(cwd, "go.mod")); err == nil {
+			return cwd, CleanString(strings.Split(strings.Split(string(data), "\n")[0], " ")[1])
 		}
-		goto label
+
+		if cwd == "." {
+			log.Fatalln("gorming: cannot find go.mod")
+		}
+
+		cwd = filepath.Dir(cwd)
 	}
+
 }
