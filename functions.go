@@ -135,7 +135,7 @@ func templateFunctions(data *types.TemplateData) template.FuncMap {
 		}
 
 		if len(column.Tags.Gorming.Enum) > 0 {
-			return strings.Join(column.Tags.Gorming.Enum, `" | "`)
+			return `"` + strings.Join(column.Tags.Gorming.Enum, `" | "`) + `"`
 		}
 
 		if strings.Contains(column.Type, "[]") {
