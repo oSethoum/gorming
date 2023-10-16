@@ -57,7 +57,6 @@ func tags(f reflect.StructField) types.Tags {
 	}
 
 	gormingTagString := strings.TrimSpace(f.Tag.Get("gorming"))
-	println(gormingTagString)
 	if len(gormingTagString) > 0 {
 		gormingTag := types.GormingTag{}
 		for _, value := range strings.Split(gormingTagString, ";") {
@@ -69,7 +68,6 @@ func tags(f reflect.StructField) types.Tags {
 				gormingTag.Skip = strings.Split(utils.CleanString(value, "skip:"), ",")
 			}
 			if strings.HasPrefix(value, "tsType:") {
-				println("found tsType ", value)
 				gormingTag.TsType = utils.CleanString(value, "tsType:")
 			}
 			if strings.HasPrefix(value, "swaggerType:") {
