@@ -61,20 +61,20 @@ func tags(f reflect.StructField) types.Tags {
 		gormingTag := types.GormingTag{}
 		for _, value := range strings.Split(gormingTagString, ";") {
 			value = strings.TrimSpace(value)
-			if strings.HasPrefix(value, "enum:") {
-				gormingTag.Enum = strings.Split(utils.CleanString(value, "enum:"), ",")
+			if strings.HasPrefix(value, "enum=") {
+				gormingTag.Enum = strings.Split(utils.CleanString(value, "enum="), ",")
 			}
-			if strings.HasPrefix(value, "skip:") {
-				gormingTag.Skip = strings.Split(utils.CleanString(value, "skip:"), ",")
+			if strings.HasPrefix(value, "skip=") {
+				gormingTag.Skip = strings.Split(utils.CleanString(value, "skip="), ",")
 			}
-			if strings.HasPrefix(value, "tsType:") {
-				gormingTag.TsType = utils.CleanString(value, "tsType:")
+			if strings.HasPrefix(value, "tsType=") {
+				gormingTag.TsType = utils.CleanString(value, "tsType=")
 			}
-			if strings.HasPrefix(value, "swaggerType:") {
-				gormingTag.SwaggerType = utils.CleanString(value, "swaggerType:")
+			if strings.HasPrefix(value, "swaggerType=") {
+				gormingTag.SwaggerType = utils.CleanString(value, "swaggerType=")
 			}
-			if strings.HasPrefix(value, "dartType:") {
-				gormingTag.DartType = utils.CleanString(value, "dartType:")
+			if strings.HasPrefix(value, "dartType=") {
+				gormingTag.DartType = utils.CleanString(value, "dartType=")
 			}
 		}
 		tags.Gorming = gormingTag
