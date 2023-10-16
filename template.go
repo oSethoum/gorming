@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"path"
+	"path/filepath"
 	"text/template"
 
 	"github.com/oSethoum/gorming/types"
@@ -38,14 +39,14 @@ func writeTemplate(templateName string, filepath string, data types.TemplateData
 	writeFile(path.Join(data.Config.Paths.BasePath, filepath), buffer.Bytes())
 }
 
-func writeFile(filepath string, data []byte) {
-	err := os.MkdirAll(path.Dir(filepath), 0777)
+func writeFile(outPath string, data []byte) {
+	err := os.MkdirAll(filepath.Dir(outPath), 0777)
 
 	if err != nil {
 		log.Fatalf("gorming: %s \n", err.Error())
 	}
 
-	err = os.WriteFile(filepath, data, 07777)
+	err = os.WriteFile(outPath, data, 07777)
 	if err != nil {
 		log.Fatalf("gorming: %s \n", err.Error())
 	}
