@@ -56,12 +56,27 @@ func tags(f reflect.StructField) types.Tags {
 		tags.Gorm = gormTag
 	}
 
-	gormingTagString := utils.CleanString(f.Tag.Get("gorming"), " ")
+	gormingTagString := strings.TrimSpace(f.Tag.Get("gorming"))
+	println(gormingTagString)
 	if len(gormingTagString) > 0 {
 		gormingTag := types.GormingTag{}
-		for _, value := range strings.Split(gormingTagString, ":") {
-			if strings.HasPrefix(value, "enum") {
+		for _, value := range strings.Split(gormingTagString, ";") {
+			value = strings.TrimSpace(value)
+			if strings.HasPrefix(value, "enum:") {
 				gormingTag.Enum = strings.Split(utils.CleanString(value, "enum:"), ",")
+			}
+			if strings.HasPrefix(value, "skip:") {
+				gormingTag.Skip = strings.Split(utils.CleanString(value, "skip:"), ",")
+			}
+			if strings.HasPrefix(value, "tsType:") {
+				println("found tsType ", value)
+				gormingTag.TsType = utils.CleanString(value, "tsType:")
+			}
+			if strings.HasPrefix(value, "swaggerType:") {
+				gormingTag.SwaggerType = utils.CleanString(value, "swaggerType:")
+			}
+			if strings.HasPrefix(value, "dartType:") {
+				gormingTag.DartType = utils.CleanString(value, "dartType:")
 			}
 		}
 		tags.Gorming = gormingTag
