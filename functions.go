@@ -111,6 +111,10 @@ func templateFunctions(data *types.TemplateData) template.FuncMap {
 	}
 
 	tsTypeFunc := func(column types.Column) string {
+		if column.Tags.Gorming.TsType != "" {
+			return column.Tags.Gorming.TsType
+		}
+
 		t := column.RawType
 		typesMap := map[string]string{
 			"Time":  "string",
@@ -121,7 +125,7 @@ func templateFunctions(data *types.TemplateData) template.FuncMap {
 		}
 
 		for k, v := range typesMap {
-			if strings.HasPrefix(k, column.RawType) {
+			if strings.HasPrefix(t, k) {
 				t = v
 			}
 		}
@@ -194,7 +198,7 @@ func templateFunctions(data *types.TemplateData) template.FuncMap {
 		}
 
 		for k, v := range typesMap {
-			if strings.HasPrefix(k, column.RawType) {
+			if strings.HasPrefix(t, k) {
 				t = v
 			}
 		}
