@@ -1,0 +1,31 @@
+package api
+
+import "context"
+
+type Map = map[string]any
+
+func Success(ctx context.Context, event string, data any, count ...int64) any {
+	m := Map{
+		"status": "success",
+		"data":   data,
+	}
+
+	if len(count) > 0 {
+		m["count"] = count[0]
+	}
+
+	go Notify(ctx, event, data)
+	return m
+}
+
+func Error(err error) any {
+	response := Map{
+		"status": "error",
+	}
+	if apiError, ok := err.(ApiError); ok {
+		response["error"] = apiError.Parse()
+	} else {
+		response["error"] = (&ApiError{MainError: err, Index: -1}).Parse()
+	}
+	return response
+}

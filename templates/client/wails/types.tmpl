@@ -39,8 +39,9 @@ export interface {{ .Name }} {
       {{- $column := . -}}
       {{- if .Tags.Json.Ignore }}{{ continue }}{{end}}
       {{- with .Edge }}
-      {{ tsName $column }}?: {{- $omit := tsCreateOmit $column -}} {{ if $omit.Should }} MakeOptional<{{ $column.RawType }}CreateInput, "{{ $omit.Field }}"> {{- else -}} {{ $column.RawType }}CreateInput{{- end -}}{{- if $column.Slice}}[]{{- end -}};
+      {{ tsName $column }}?: {{- $omit := tsCreateOmit $column -}} {{ $column.RawType }}CreateInput{{- if $column.Slice}}[]{{- end -}};
       {{- else }}
+      {{ tsOptionalKey . }}
       {{ tsName $column }}{{- tsOptionalCreate $column  -}}: {{ tsType $column }};
       {{- end }}
     {{- end }}
@@ -130,6 +131,3 @@ export type TQuery<T extends keyof TSchema> = {
    where?: TWhere<T>;
    preloads?: TSchema[T]["preloads"];
 };
-
-// helpers
-type MakeOptional<T, K extends keyof T> = Omit<T, K> & { [P in K]?: T[P] };

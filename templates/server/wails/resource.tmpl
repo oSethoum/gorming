@@ -1,0 +1,73 @@
+package api
+
+import (
+	"{{ .Config.BackendPackage }}/db"
+	"{{ .Config.BackendPackage }}/models"
+	"context"
+
+	"gorm.io/gorm"
+)
+
+func QueryResource[T models.Model](ctx context.Context, resource string, query *Query) any {
+	client, err := query.P(db.Client, resource)
+	if err != nil {
+		return Error(err)
+	}
+	var count int64
+	data := new([]T)
+	err = client.Find(data).Count(&count).Error
+	if err != nil {
+		return Error(err)
+	}
+	return Success(ctx, resource+":query", data, count)
+}
+
+func CreateResource[T models.Model](ctx context.Context, resource string, input []T) any {
+	err := db.Client.Transaction(func(tx *gorm.DB) error {
+		for i, v := range input {
+			if err := tx.Create(&v).Error; err != nil {
+				return ApiError{MainError: err, Index: i}
+			}
+			input[i] = v
+		}
+		return nil
+	})
+	if err != nil {
+		return Error(err)
+	}
+	return Success(ctx, resource+":create", input)
+}
+
+func UpdateResource[T models.Model](ctx context.Context, resource string, input []T) any {
+	err := db.Client.Transaction(func(tx *gorm.DB) error {
+		for i, v := range input {
+			err := tx.Updates(&v).Error
+			if err != nil {
+				return ApiError{MainError: err, Index: i}
+			}
+			input[i] = v
+		}
+		return nil
+	})
+	if err != nil {
+		return Error(err)
+	}
+	return Success(ctx, resource+"update", input)
+}
+
+func DeleteResource[T models.Model](ctx context.Context, resource string, where *Where) any {
+	predicate, vars, err := where.P()
+	if err != nil {
+		if err != nil {
+			return Error(err)
+		}
+	}
+	client := db.Client.Model(new(T)).Where(predicate, vars...)
+	data := new([]T)
+	err = client.Find(data).Error
+	if err != nil {
+		return Error(err)
+	}
+	client.Delete(predicate, vars...)
+	return Success(ctx, resource+":delete", data)
+}

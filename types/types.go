@@ -24,6 +24,8 @@ const (
 	Utils
 	DartApi
 	DartTypes
+	Api
+	Resource
 	TsApi
 	TsTypes
 )
@@ -41,6 +43,12 @@ const (
 )
 
 const (
+	Fiber Server = iota + 40
+	Echo
+	Wails
+)
+
+const (
 	Generate      = true
 	DoNotGenerate = false
 )
@@ -54,16 +62,20 @@ type Paths struct {
 	BackendPath      string `json:"backend_path,omitempty"`
 	TypescriptClient string `json:"typescript_client,omitempty"`
 	DartClient       string `json:"dart_client,omitempty"`
+	ApiPath          string `json:"api_path,omitempty"`
 }
 
 type Config struct {
-	DBKind      DBKind      `json:"db_kind,omitempty"`
-	Case        Case        `json:"case,omitempty"`
-	FilesAction FilesAction `json:"files_action,omitempty"`
-	Paths       Paths       `json:"paths,omitempty"`
-	Debug       bool        `json:"debug,omitempty"`
-	Fiels       []File      `json:"fiels,omitempty"`
-	Package     string      `json:"package,omitempty"`
+	DBKind         DBKind      `json:"db_kind,omitempty"`
+	Case           Case        `json:"case,omitempty"`
+	Server         Server      `json:"server,omitempty"`
+	FilesAction    FilesAction `json:"files_action,omitempty"`
+	Paths          Paths       `json:"paths,omitempty"`
+	Debug          bool        `json:"debug,omitempty"`
+	Fiels          []File      `json:"fiels,omitempty"`
+	Package        string      `json:"package,omitempty"`
+	ApiPackage     string      `json:"api_package,omitempty"`
+	BackendPackage string      `json:"backend_package,omitempty"`
 }
 
 type Schema struct {

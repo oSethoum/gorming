@@ -1,0 +1,26 @@
+package {{ .Config.ApiPackage }}
+
+import (
+	"{{ .Config.BackendPackage }}/api"
+	"{{ .Config.BackendPackage }}/models"
+)
+
+type Map = map[string]any
+
+{{ range .Schema.Tables }}
+func (a *App) Query_{{ tableName . }}(query *api.Query) any {
+	return api.QueryResource[models.User](a.Ctx, "{{ tableName . }}", query)
+}
+
+func (a *App) Create_{{ tableName . }}(input []models.{{ .Name }}) any {
+	return api.CreateResource[models.{{ .Name }}](a.Ctx, "{{ tableName . }}", input)
+}
+
+func (a *App) Update_{{ tableName . }}(input []models.{{ .Name }}) any {
+	return api.UpdateResource[models.{{ .Name }}](a.Ctx, "{{ tableName . }}", input)
+}
+
+func (a *App) Delete_{{ tableName . }}(where *api.Where) any {
+	return api.DeleteResource[models.{{ .Name }}](a.Ctx, "{{ tableName . }}", where)
+}
+{{ end -}}

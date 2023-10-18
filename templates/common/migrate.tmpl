@@ -1,6 +1,6 @@
 package db
 
-import "{{ .Config.Package }}/models"
+import "{{ .Config.BackendPackage }}/models"
 
 func Migrate() {
 	Client.AutoMigrate(
