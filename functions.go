@@ -159,7 +159,7 @@ func templateFunctions(data *types.TemplateData) template.FuncMap {
 
 	tsOptionalCreateFunc := func(column types.Column) string {
 		if utils.In(column.Name, "ID", "CreatedAt", "UpdatedAt", "DeletedAt") ||
-			strings.HasPrefix(column.Type, "*") || column.Edge != nil ||
+			strings.HasPrefix(column.Type, "*") || strings.HasSuffix(column.Name, "ID") || column.Edge != nil ||
 			len(column.Tags.Gorm.Default) > 0 {
 			return "?"
 		}
@@ -227,6 +227,15 @@ func templateFunctions(data *types.TemplateData) template.FuncMap {
 		return utils.Camel(column.Name)
 	}
 
+	tsOptionalKeyFunc := func(column types.Column) string {
+		if !(utils.In(column.Name, "ID", "CreatedAt", "UpdatedAt", "DeletedAt") ||
+			strings.HasPrefix(column.Type, "*") || column.Edge != nil ||
+			len(column.Tags.Gorm.Default) > 0) && strings.HasSuffix(column.Name, "ID") {
+			return ` /** required edge */`
+		}
+		return ""
+	}
+
 	return template.FuncMap{
 		"plural":                   inflection.Plural,
 		"models":                   modelsFunc,
@@ -239,6 +248,7 @@ func templateFunctions(data *types.TemplateData) template.FuncMap {
 		"columnOptionalCreate":     columnOptionalCreateFunc,
 		"uniqueRelations":          uniqueRelationsFunc,
 		"tsOptionalCreate":         tsOptionalCreateFunc,
+		"tsOptionalKey":            tsOptionalKeyFunc,
 		"tsOptional":               tsOptionalFunc,
 		"tsCreateOmit":             tsCreateOmitFunc,
 		"dartType":                 dartTypeFunc,
