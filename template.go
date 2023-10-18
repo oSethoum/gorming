@@ -52,17 +52,6 @@ func writeFile(outPath string, data []byte) {
 	}
 }
 
-func defaultConfig(config types.Config) types.Config {
-	basePath, pkg := utils.CurrentGoMod()
-	config.Package = utils.Choice(config.Package, pkg)
-	config.Case = utils.Choice(config.Case, types.Snake)
-	config.DBKind = utils.Choice(config.DBKind, types.SQLite)
-	config.Paths.TypescriptClient = utils.Choice(config.Paths.TypescriptClient, "client/typescript/gorming")
-	config.Paths.DartClient = utils.Choice(config.Paths.DartClient, "client/dart/gorming")
-	config.Paths.BasePath = utils.Choice(config.Paths.BasePath, basePath)
-	return config
-}
-
 func writeJSON(filename string, data any) {
 	buffer := new(bytes.Buffer)
 	encoder := json.NewEncoder(buffer)
