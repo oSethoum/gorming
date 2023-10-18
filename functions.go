@@ -13,9 +13,9 @@ import (
 func templateFunctions(data *types.TemplateData) template.FuncMap {
 	tsNameFunc := func(column types.Column) string {
 
-		if len(column.Tags.Json.Name) > 0 {
-			return column.Tags.Json.Name
-		}
+		// if len(column.Tags.Json.Name) > 0 {
+		// 	return column.Tags.Json.Name
+		// }
 
 		if data.Config.Case == types.Camel {
 			return utils.Camel(column.Name)
