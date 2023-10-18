@@ -45,6 +45,7 @@ func CreateResource[T models.Model](resource string) fiber.Handler {
 				if err := tx.Create(&v).Error; err != nil {
 					return ApiResponseError{MainError: err, Index: i}
 				}
+				(*body)[i] = v
 			}
 			return nil
 		})
@@ -69,6 +70,7 @@ func UpdateResource[T models.Model](resource string) fiber.Handler {
 				if err != nil {
 					return ApiResponseError{MainError: err, Index: i}
 				}
+				(*body)[i] = v
 			}
 			return nil
 		})
@@ -79,6 +81,7 @@ func UpdateResource[T models.Model](resource string) fiber.Handler {
 		return Success(c, body)
 	}
 }
+
 
 func DeleteResource[T models.Model](resource string) fiber.Handler {
 	return func(c *fiber.Ctx) error {
