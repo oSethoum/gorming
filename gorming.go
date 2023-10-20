@@ -63,7 +63,7 @@ func New(config types.Config) types.Engine {
 
 		if config.Server == types.Wails {
 			writeTemplate("common/db", filepath.Join(config.Paths.BackendPath, "db/db.go"), data, types.DB)
-			writeTemplate("common/migrate", filepath.Join(config.Paths.BackendPath, "db/migrate.go"), data, types.Migrate)
+			writeTemplate("server/wails/migrate", filepath.Join(config.Paths.BackendPath, "db/migrate.go"), data, types.Migrate)
 			writeTemplate("common/utils", filepath.Join(config.Paths.BackendPath, "utils/utils.go"), data, types.Utils)
 			writeTemplate("common/model", filepath.Join(config.Paths.BackendPath, "models/model.go"), data, types.Model)
 

@@ -82,7 +82,6 @@ func UpdateResource[T models.Model](resource string) fiber.Handler {
 	}
 }
 
-
 func DeleteResource[T models.Model](resource string) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		body := new(Where)
@@ -96,11 +95,15 @@ func DeleteResource[T models.Model](resource string) fiber.Handler {
 				return Error(c, err)
 			}
 		}
-		err = db.Client.WithContext(c.UserContext()).Model(new(T)).Where(predicate, vars...).Error
+		client := db.Client.WithContext(c.UserContext()).Model(new(T))
+		data := new([]T)
+		client.Where(predicate, vars...).Find(data)
+		client.Delete(predicate, vars...)
+		err = client.Delete(predicate, vars...).Error
 		if err != nil {
 			return Error(c, err)
 		}
-		go Broadcast(resource+":delete", body)
-		return Success(c, body)
+		go Broadcast(resource+":delete", data)
+		return Success(c, data)
 	}
 }

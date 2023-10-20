@@ -1,11 +1,11 @@
 package db
 
-import "{{ .Config.BackendPackage }}/models"
+import "{{ .Config.Package }}/models"
 
 func Migrate() {
 	Client.AutoMigrate(
     {{- range .Schema.Tables }}
-    &models.{{ .Name }}{},
+        &models.{{ .Name }}{},
     {{- end }}
     )
 }

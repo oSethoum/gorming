@@ -2,7 +2,6 @@ package db
 
 import (
 	"log"
-	"os"
 
 	{{ if eq .Config.DBKind "sqlite" }}
 	"fmt"
@@ -23,9 +22,8 @@ import (
 var Client *gorm.DB
 
 func Init() {
-	os.MkdirAll("./data", 07777)
 	{{ if eq .Config.DBKind "sqlite" }}
-	dsn := fmt.Sprintf("file:%s?_fk=1&_pragma_key=%s&_journal_mode=WAL", "./data/db.sqlite", "")
+	dsn := fmt.Sprintf("file:%s?_fk=1&_pragma_key=%s", "db.sqlite", "")
 	dialect := sqlite.Open(dsn)
 	{{ end }}
 
