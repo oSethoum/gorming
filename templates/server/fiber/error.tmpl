@@ -15,7 +15,7 @@ type ApiResponseError struct {
 }
 
 func (err ApiResponseError) Error() string {
-	return fmt.Sprintf("error: %s |- index: %d", err.MainError.Error(), err.Index)
+	return fmt.Sprintf("error: %s | index: %d", err.MainError.Error(), err.Index)
 }
 
 func (e *ApiResponseError) Parse() any {
