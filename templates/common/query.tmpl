@@ -1,6 +1,7 @@
-package handlers
+package db
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"regexp"
@@ -44,13 +45,44 @@ type Query struct {
 	Preloads map[string]*Query `json:"preloads,omitempty"`
 }
 
-func (q *Query) P(client *gorm.DB, table string) (*gorm.DB, error) {
-	relationsMap := getRelations()
-	var count uint
+type contextKey uint
 
+const (
+	DeniedResourcesKey contextKey = iota + 1
+	DeniedFieldsKey
+)
+
+func getDeniedFields(ctx context.Context, table string) string {
+	value := ctx.Value(DeniedFieldsKey)
+	if m, ok := value.(map[string]string); ok {
+		if fields, ok := m[table]; ok {
+			return fields
+		}
+	}
+	return ""
+}
+
+func getDeniedResources(ctx context.Context) string {
+	value := ctx.Value(DeniedResourcesKey)
+	if value == nil {
+		return ""
+	}
+	return value.(string)
+}
+
+func (q *Query) P(client *gorm.DB, table string) (*gorm.DB, error) {
 	if client == nil {
 		return nil, errors.New("query: gorm client is nil")
 	}
+
+	deniedResources := getDeniedResources(client.Statement.Context)
+
+	if strings.Contains(deniedResources, table+":query") || strings.Contains(deniedResources, table+":all") {
+		return nil, fmt.Errorf("query: unauthorized access to %s", table)
+	}
+
+	relationsMap := getRelations()
+	var count uint
 
 	if len(q.Preloads) > 0 {
 		relations, ok := relationsMap[table]
@@ -64,17 +96,20 @@ func (q *Query) P(client *gorm.DB, table string) (*gorm.DB, error) {
 				return nil, fmt.Errorf("query: invalid relation %s", key)
 			}
 
-			if value == nil {
-				client = client.Preload(edge(key))
-			} else {
-				client = client.Preload(edge(key), func(db *gorm.DB) *gorm.DB {
-					ndb, err := value.P(db, relation[0])
-					if err != nil {
-						return db
-					}
-					return ndb
-				})
+			if strings.Contains(deniedResources, relation[0]) {
+				if value == nil {
+					client = client.Preload(edge(key))
+				} else {
+					client = client.Preload(edge(key), func(db *gorm.DB) *gorm.DB {
+						ndb, err := value.P(db, relation[0])
+						if err != nil {
+							return db
+						}
+						return ndb
+					})
+				}
 			}
+
 		}
 	}
 
@@ -98,8 +133,11 @@ func (q *Query) P(client *gorm.DB, table string) (*gorm.DB, error) {
 
 	if len(q.Select) > 0 {
 		selects := []string{}
+		deniedFields := getDeniedFields(client.Statement.Context, table)
 		for _, s := range q.Select {
-			selects = append(selects, fmt.Sprintf(`"%s"."%s"`, table, s))
+			if !strings.Contains(deniedFields, s) {
+				selects = append(selects, fmt.Sprintf(`"%s"."%s"`, table, s))
+			}
 		}
 		client = client.Select(selects)
 	}

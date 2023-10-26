@@ -12,7 +12,7 @@ import (
 func QueryResource[T models.Model](resource string) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		result := new([]T)
-		query := new(Query)
+		query := new(db.Query)
 		q := c.Query("query", "{}")
 		err := json.Unmarshal([]byte(q), query)
 		if err != nil {
@@ -84,7 +84,7 @@ func UpdateResource[T models.Model](resource string) fiber.Handler {
 
 func DeleteResource[T models.Model](resource string) fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		body := new(Where)
+		body := new(db.Where)
 		err := c.BodyParser(body)
 		if err != nil {
 			return Error(c, err)
