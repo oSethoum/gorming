@@ -25,6 +25,7 @@ const (
 	DartApi
 	DartTypes
 	Api
+	TokenMiddleware
 	Resource
 	TsApi
 	TsTypes
@@ -76,6 +77,7 @@ type Config struct {
 	Package        string      `json:"package,omitempty"`
 	ApiPackage     string      `json:"api_package,omitempty"`
 	BackendPackage string      `json:"backend_package,omitempty"`
+	WithTokenAuth  bool        `json:"with_token_auth,omitempty"`
 }
 
 type Schema struct {
