@@ -32,7 +32,7 @@ func parseTemplate(templateName string, data types.TemplateData) *bytes.Buffer {
 }
 
 func writeTemplate(templateName string, filepath string, data types.TemplateData, file types.File) {
-	if !utils.In(file, data.Config.Fiels...) == bool(data.Config.FilesAction) {
+	if !utils.In(file, data.Config.Files...) == bool(data.Config.FilesAction) {
 		return
 	}
 	buffer := parseTemplate(templateName, data)

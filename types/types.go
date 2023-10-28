@@ -72,7 +72,7 @@ type Config struct {
 	FilesAction    FilesAction `json:"files_action,omitempty"`
 	Paths          Paths       `json:"paths,omitempty"`
 	Debug          bool        `json:"debug,omitempty"`
-	Fiels          []File      `json:"fiels,omitempty"`
+	Files          []File      `json:"files,omitempty"`
 	Package        string      `json:"package,omitempty"`
 	ApiPackage     string      `json:"api_package,omitempty"`
 	BackendPackage string      `json:"backend_package,omitempty"`
