@@ -42,7 +42,7 @@ func New(config types.Config) types.Engine {
 			writeTemplate("client/typescript/types", path.Join(data.Config.Paths.TypescriptClient, "types.ts"), data, types.TsTypes)
 			writeTemplate("client/dart/api", path.Join(data.Config.Paths.DartClient, "api.dart"), data, types.DartApi)
 			writeTemplate("client/dart/types", path.Join(data.Config.Paths.DartClient, "types.dart"), data, types.DartTypes)
-			if config.WithTokenAuth {
+			if config.WithPrivacy {
 				writeTemplate("server/fiber/token", filepath.Join(config.Paths.BackendPath, "handlers/middleware.go"), data, types.TokenMiddleware)
 			}
 		}

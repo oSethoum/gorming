@@ -77,7 +77,7 @@ type Config struct {
 	Package        string      `json:"package,omitempty"`
 	ApiPackage     string      `json:"api_package,omitempty"`
 	BackendPackage string      `json:"backend_package,omitempty"`
-	WithTokenAuth  bool        `json:"with_token_auth,omitempty"`
+	WithPrivacy    bool        `json:"with_privacy,omitempty"`
 }
 
 type Schema struct {
@@ -111,6 +111,7 @@ type GormTag struct {
 	ForeignKey string `json:"foreign_key,omitempty"`
 	References string `json:"reference,omitempty"`
 	Ignore     bool   `json:"ignore,omitempty"`
+	Many2Many  string `json:"many2many,omitempty"`
 }
 
 type GormingTag struct {
@@ -128,10 +129,11 @@ type JsonTag struct {
 }
 
 type Edge struct {
-	Table    string `json:"table,omitempty"`
-	Unique   bool   `json:"unique,omitempty"`
-	LocalKey string `json:"local_key,omitempty"`
-	TableKey string `json:"table_key,omitempty"`
+	Table     string `json:"table,omitempty"`
+	Unique    bool   `json:"unique,omitempty"`
+	LocalKey  string `json:"local_key,omitempty"`
+	TableKey  string `json:"table_key,omitempty"`
+	Many2Many string `json:"many2many,omitempty"`
 }
 
 type Column struct {

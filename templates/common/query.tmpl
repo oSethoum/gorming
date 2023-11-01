@@ -1,7 +1,9 @@
 package db
 
 import (
+	{{ if .Config.WithPrivacy }}
 	"context"
+	{{ end -}}
 	"errors"
 	"fmt"
 	"regexp"
@@ -45,10 +47,11 @@ type Query struct {
 	Preloads map[string]*Query `json:"preloads,omitempty"`
 }
 
+{{ if .Config.WithPrivacy }}
 type contextKey uint
 
 const (
-	DeniedResourcesKey contextKey = iota + 1
+	DeniedActionsKey contextKey = iota + 1
 	DeniedFieldsKey
 )
 
@@ -62,30 +65,30 @@ func getDeniedFields(ctx context.Context, table string) string {
 	return ""
 }
 
-func getDeniedResources(ctx context.Context) string {
-	value := ctx.Value(DeniedResourcesKey)
-	if value == nil {
-		return ""
+func getDeniedActions(ctx context.Context) map[string]string {
+	value := ctx.Value(DeniedActionsKey)
+	if m, ok := value.(map[string]string); ok {
+		return m
 	}
-	return value.(string)
+	return map[string]string{}
 }
+{{ end }}
 
 func (q *Query) P(client *gorm.DB, table string) (*gorm.DB, error) {
 	if client == nil {
 		return nil, errors.New("query: gorm client is nil")
 	}
+	{{ if .Config.WithPrivacy }}
+	deniedActions := getDeniedActions(client.Statement.Context)
 
-	deniedResources := getDeniedResources(client.Statement.Context)
-
-	if strings.Contains(deniedResources, table+":query") || strings.Contains(deniedResources, table+":all") {
+	if strings.Contains(deniedActions[table], "query") || strings.Contains(deniedActions[table], "all") {
 		return nil, fmt.Errorf("query: unauthorized access to %s", table)
 	}
-
-	relationsMap := getRelations()
+	{{ end }}
 	var count uint
 
 	if len(q.Preloads) > 0 {
-		relations, ok := relationsMap[table]
+		relations, ok := edgesMap[table]
 		if !ok {
 			return nil, fmt.Errorf("query: cannot preload %s", table)
 		}
@@ -95,8 +98,8 @@ func (q *Query) P(client *gorm.DB, table string) (*gorm.DB, error) {
 			if !ok {
 				return nil, fmt.Errorf("query: invalid relation %s", key)
 			}
-
-			if strings.Contains(deniedResources, relation[0]) {
+			{{ if .Config.WithPrivacy }} 
+			if strings.Contains(deniedActions[relation[0]], "query") || strings.Contains(deniedActions[relation[0]], "all") {
 				if value == nil {
 					client = client.Preload(edge(key))
 				} else {
@@ -109,17 +112,29 @@ func (q *Query) P(client *gorm.DB, table string) (*gorm.DB, error) {
 					})
 				}
 			}
-
+			{{ else }}
+			if value == nil {
+				client = client.Preload(edge(key))
+			} else {
+				client = client.Preload(edge(key), func(db *gorm.DB) *gorm.DB {
+					ndb, err := value.P(db, relation[0])
+					if err != nil {
+						return db
+					}
+					return ndb
+				})
+			}
+			{{ end }}
 		}
 	}
 
 	prefix := client.NamingStrategy.TableName("")
 	if len(q.With) > 0 {
 		for key, value := range q.With {
-			if _, ok := relationsMap[table][key]; !ok {
+			if _, ok := edgesMap[table][key]; !ok {
 				return nil, fmt.Errorf("query: invalid with relation %s", key)
 			}
-			join, query, vars, err := value.P(count, prefix, table, relationsMap[table][key], &relationsMap)
+			join, query, vars, err := value.P(count, prefix, table, edgesMap[table][key])
 			if err != nil {
 				return nil, err
 			}
@@ -131,6 +146,7 @@ func (q *Query) P(client *gorm.DB, table string) (*gorm.DB, error) {
 		}
 	}
 
+	{{ if .Config.WithPrivacy }}
 	if len(q.Select) > 0 {
 		selects := []string{}
 		deniedFields := getDeniedFields(client.Statement.Context, table)
@@ -141,7 +157,11 @@ func (q *Query) P(client *gorm.DB, table string) (*gorm.DB, error) {
 		}
 		client = client.Select(selects)
 	}
-
+	{{ else }}
+	if len(q.Select) > 0 {
+		client = client.Select(q.Select)
+	}
+	{{ end }}
 	if q.Where != nil {
 		query, variables, err := q.Where.P(prefix + table + ".")
 		if err != nil {
@@ -179,22 +199,39 @@ func (q *Query) P(client *gorm.DB, table string) (*gorm.DB, error) {
 	return client, nil
 }
 
-func (w *With) P(count uint, prefix, table string, relation [3]string, relationsMap *Relations) (string, string, []any, error) {
+func (w *With) P(count uint, prefix, table string, relation []string) (string, string, []any, error) {
 
 	var err error
 	var vars []any
-	var where string
+	var where, join string
 	count++
 
 	newPrefix := fmt.Sprintf("%s_%d", prefix+relation[0], count)
 
-	join := fmt.Sprintf(
-		`INNER JOIN "%s" as "%s" ON "%s" = "%s"`,
-		prefix+relation[0],
-		newPrefix,
-		prefix+table+`"."`+relation[1],
-		newPrefix+`"."`+relation[2],
-	)
+	if len(relation) == 3 {
+		join = fmt.Sprintf(
+			`INNER JOIN "%s" as "%s" ON "%s" = "%s"`,
+			prefix+relation[0],
+			newPrefix,
+			prefix+table+`"."`+relation[1],
+			newPrefix+`"."`+relation[2],
+		)
+	}
+
+	if len(relation) == 6 {
+		midPrefix := fmt.Sprintf("%s_%d", prefix+relation[3], count)
+		join = fmt.Sprintf(
+			`INNER JOIN "%s" as "%s" ON "%s" = "%s" INNER JOIN "%s" as "%s" ON "%s" = "%s"`,
+			prefix+relation[3],
+			midPrefix,
+			prefix+table+`"."`+relation[1],
+			midPrefix+`"."`+relation[4],
+			prefix+relation[0],
+			newPrefix,
+			newPrefix+`"."`+relation[1],
+			midPrefix+`"."`+relation[5],
+		)
+	}
 
 	if w.Where != nil {
 		where, vars, err = w.Where.P(newPrefix + `.`)
@@ -203,8 +240,8 @@ func (w *With) P(count uint, prefix, table string, relation [3]string, relations
 	if len(w.With) > 0 {
 		table = relation[0]
 		for key, with := range w.With {
-			if relation, ok := (*relationsMap)[relation[0]][key]; ok {
-				subJoin, subWhere, subVars, subErr := with.P(count, prefix, table, relation, relationsMap)
+			if relation, ok := edgesMap[relation[0]][key]; ok {
+				subJoin, subWhere, subVars, subErr := with.P(count, prefix, table, relation)
 				if subErr != nil {
 					return "", "", nil, fmt.Errorf("with: cannot find relation %s for table %s", key, table)
 				}
@@ -344,20 +381,21 @@ func edge(s string) string {
 	return string(unicode.ToUpper(rune(s[0]))) + s[1:]
 }
 
-type Relations = map[string]map[string][3]string
 
-func getRelations() Relations {
-	return Relations{
-		{{- range .Schema.Tables }}
-		   {{- $table := . -}}
-         "{{ tableName $table }}": {
-         {{ range .Columns -}}
-				{{ $column := . -}}
+var edgesMap = map[string]map[string][]string {
+	{{ range .Schema.Tables -}}
+		{{- $table := . -}}
+        "{{ tableName $table }}": {
+        {{ range .Columns -}}
+			{{ $column := . -}}
             {{ with .Edge -}}
-            "{{ tsName $column }}":[3]string{"{{ tableNameString .Table }}", "{{ tsNameString .LocalKey }}", "{{ tsNameString .TableKey }}"},
-            {{ end -}} 
-         {{ end -}} 
-      },
-      {{ end -}}
-	}
+            {{ if eq .Many2Many "" -}}
+			"{{ tsName $column }}":{"{{ tableNameString .Table }}", "{{ tsNameString .LocalKey }}", "{{ tsNameString .TableKey }}"},
+			{{ else }}
+			"{{ tsName $column }}":{"{{ tableNameString .Table }}", "{{ tsNameString .LocalKey }}", "{{ tsNameString .TableKey }}", "{{ .Many2Many }}", "{{ tsNameString $table.Name }}_id", "{{ tsNameString .Table }}_id"},
+			{{ end -}}
+			{{ end -}} 
+        {{ end -}} 
+      	},
+	{{ end -}}
 }

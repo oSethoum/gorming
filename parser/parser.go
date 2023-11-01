@@ -50,70 +50,75 @@ func Columns(tablesMap *types.TypeMap, table reflect.Type) []types.Column {
 		}
 
 		if edgeTable, ok := (*tablesMap)[column.RawType]; ok {
-
-			edgeTableFieldsMap := &types.FieldMap{}
-			fields(edgeTableFieldsMap, edgeTable.Type())
-
 			edge := &types.Edge{
 				Table:  column.RawType,
 				Unique: !strings.Contains(column.Type, "[]"),
 			}
 
-			var keyFound, referenceFound bool
+			if column.Tags.Gorm.Many2Many != "" {
+				edge.Many2Many = column.Tags.Gorm.Many2Many
+				edge.LocalKey = "ID"
+				edge.TableKey = "ID"
+			} else {
 
-			if edge.Unique {
-				key := utils.Choice(column.Tags.Gorm.ForeignKey, table.Name()+"ID")
+				edgeTableFieldsMap := &types.FieldMap{}
+				fields(edgeTableFieldsMap, edgeTable.Type())
 
-				if _, keyFound = (*edgeTableFieldsMap)[key]; keyFound {
-					edge.TableKey = key
-				}
+				var keyFound, referenceFound bool
 
-				if !keyFound {
-					key = utils.Choice(column.Tags.Gorm.ForeignKey, column.Name+"ID")
-				}
+				if edge.Unique {
+					key := utils.Choice(column.Tags.Gorm.ForeignKey, table.Name()+"ID")
 
-				var keyLocal bool
-				if !keyFound {
-					if _, keyFound = (*fieldsMap)[key]; keyFound {
-						edge.LocalKey = key
-						keyLocal = true
+					if _, keyFound = (*edgeTableFieldsMap)[key]; keyFound {
+						edge.TableKey = key
 					}
-				}
 
-				reference := utils.Choice(column.Tags.Gorm.References, "ID")
-				if keyLocal {
-					if _, referenceFound = (*edgeTableFieldsMap)[reference]; referenceFound {
-						edge.TableKey = reference
+					if !keyFound {
+						key = utils.Choice(column.Tags.Gorm.ForeignKey, column.Name+"ID")
+					}
+
+					var keyLocal bool
+					if !keyFound {
+						if _, keyFound = (*fieldsMap)[key]; keyFound {
+							edge.LocalKey = key
+							keyLocal = true
+						}
+					}
+
+					reference := utils.Choice(column.Tags.Gorm.References, "ID")
+					if keyLocal {
+						if _, referenceFound = (*edgeTableFieldsMap)[reference]; referenceFound {
+							edge.TableKey = reference
+						}
+
+					} else {
+						if _, referenceFound = (*fieldsMap)[reference]; referenceFound {
+							edge.LocalKey = reference
+						}
 					}
 
 				} else {
+					key := utils.Choice(column.Tags.Gorm.ForeignKey, table.Name()+"ID")
+					reference := utils.Choice(column.Tags.Gorm.References, "ID")
+
+					if _, keyFound = (*edgeTableFieldsMap)[key]; keyFound {
+						edge.TableKey = key
+					}
+
 					if _, referenceFound = (*fieldsMap)[reference]; referenceFound {
 						edge.LocalKey = reference
 					}
+
 				}
 
-			} else {
-				key := utils.Choice(column.Tags.Gorm.ForeignKey, table.Name()+"ID")
-				reference := utils.Choice(column.Tags.Gorm.References, "ID")
-
-				if _, keyFound = (*edgeTableFieldsMap)[key]; keyFound {
-					edge.TableKey = key
+				if !keyFound {
+					log.Fatalf("gorming: cannot find foreignKey for %s.%s", table.Name(), column.Name)
 				}
 
-				if _, referenceFound = (*fieldsMap)[reference]; referenceFound {
-					edge.LocalKey = reference
+				if !referenceFound {
+					log.Fatalf("gorming: cannot find reference for %s.%s", table.Name(), column.Name)
 				}
-
 			}
-
-			if !keyFound {
-				log.Fatalf("gorming: cannot find foreignKey for %s.%s", table.Name(), column.Name)
-			}
-
-			if !referenceFound {
-				log.Fatalf("gorming: cannot find reference for %s.%s", table.Name(), column.Name)
-			}
-
 			column.Edge = edge
 		}
 		columns = append(columns, column)

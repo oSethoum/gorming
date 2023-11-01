@@ -52,6 +52,9 @@ func tags(f reflect.StructField) types.Tags {
 			if strings.HasPrefix(value, "default:") {
 				gormTag.Default = utils.CleanString(value, "default:")
 			}
+			if strings.HasPrefix(value, "many2many:") {
+				gormTag.Many2Many = utils.CleanString(value, "many2many:")
+			}
 		}
 		tags.Gorm = gormTag
 	}
