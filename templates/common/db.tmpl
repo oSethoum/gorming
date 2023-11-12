@@ -21,7 +21,7 @@ import (
 
 var Client *gorm.DB
 
-func Init() {
+func Init() error {
 	{{ if eq .Config.DBKind "sqlite" }}
 	dsn := fmt.Sprintf("file:%s?_fk=1&_pragma_key=%s", "db.sqlite", "")
 	dialect := sqlite.Open(dsn)
@@ -37,19 +37,25 @@ func Init() {
 	{{ end }}
 	client, err := gorm.Open(dialect, &gorm.Config{
 		PrepareStmt:                              true,
-		{{- if .Config.Debug -}}
+		{{ if .Config.Debug -}}
 		Logger:                                   logger.Default.LogMode(logger.Info),
-		{{- end -}}
+		{{ end -}}
 	})
 
 	if err != nil {
-		log.Fatalln(err)
+		return error
 	}
 
 	Client = client
+	return nil
 }
 
-func Close() {
-	conn, _ := Client.DB()
-	conn.Close()
+func Close() error {
+	if Client != nil {
+		conn, err := Client.DB()
+		if err != nil {
+			return err
+		}
+		return conn.Close()
+	}
 }

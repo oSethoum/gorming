@@ -2,8 +2,8 @@ package db
 
 import "{{ .Config.Package }}/models"
 
-func Migrate() {
-	Client.AutoMigrate(
+func Migrate() error {
+	return Client.AutoMigrate(
     {{- range .Schema.Tables }}
         &models.{{ .Name }}{},
     {{- end }}
