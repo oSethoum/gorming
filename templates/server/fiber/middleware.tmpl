@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"{{ .Config.Package }}/env"
 	"{{ .Config.Package }}/db"
 	"context"
 	"errors"
@@ -10,22 +11,10 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
+
 func Protected(c *fiber.Ctx) error {
 
 	resource := c.Params("resource")
-	action := ""
-	switch c.Method() {
-	case "GET":
-		action = "query"
-	case "POST":
-		action = "create"
-	case "PATCH":
-		action = "update"
-	case "DELETE":
-		action = "delete"
-	}
-
-	// TODO: allow public actions here
 
 	tokenString := c.Cookies("token")
 	if tokenString == "" {
@@ -34,14 +23,14 @@ func Protected(c *fiber.Ctx) error {
 		}
 	}
 
-	key, err := paseto.V4SymmetricKeyFromHex(keyString)
+	key, err := paseto.V4SymmetricKeyFromHex(env.TOKEN_AUTH_KEY)
 	if err != nil {
 		return Error(c, err, fiber.StatusInternalServerError)
 	}
 
 	token, err := paseto.NewParser().ParseV4Local(key, tokenString, nil)
 	if err != nil {
-		return Error(c, errors.New("invalid access token"), fiber.StatusUnauthorized)
+		return Error(c, errors.New("authorization: invalid access token"), fiber.StatusUnauthorized)
 	}
 
 	deniedActions := new(map[string]string)
@@ -50,14 +39,14 @@ func Protected(c *fiber.Ctx) error {
 		return Error(c, err, fiber.StatusInternalServerError)
 	}
 
-	deniedFields := new(map[string]string)
-	err = token.Get("denied_fields", deniedActions)
+	deniedFields := new(map[string][]string)
+	err = token.Get("denied_fields", deniedFields)
 	if err != nil {
 		return Error(c, err, fiber.StatusInternalServerError)
 	}
 
 	actions := (*deniedActions)[resource]
-	if strings.Contains(actions, action) || strings.Contains(actions, "all") {
+	if strings.Contains(actions, c.Method()) || strings.Contains(actions, "all") {
 		return Error(c, errors.New("authorization: unauthorized access to resource"), fiber.StatusUnauthorized)
 	}
 

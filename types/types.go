@@ -10,25 +10,28 @@ type FilesAction bool
 type IgnoreHandler byte
 
 const (
-	DB = iota + 10
-	Routes
-	Handler
-	Model
-	Migrate
-	Query
-	Images
-	Error
-	Response
-	Ws
-	Privacy
-	Utils
-	DartApi
-	DartTypes
-	Api
-	TokenMiddleware
-	Resource
-	TsApi
-	TsTypes
+	FileDB = iota + 10
+	FileRoutes
+	FileHandler
+	FileHooks
+	FileMigration
+	FileQuery
+	FileImages
+	FileError
+	FileResponse
+	FileWs
+	FilePrivacy
+	FileUtils
+	FileDartApi
+	FileDartTypes
+	FileApi
+	FileMiddleware
+	FileAuthentication
+	FileResource
+	FileTsApi
+	FileTsTypes
+	FileSchema
+	FileEnv
 )
 
 const (
@@ -77,7 +80,8 @@ type Config struct {
 	Package        string      `json:"package,omitempty"`
 	ApiPackage     string      `json:"api_package,omitempty"`
 	BackendPackage string      `json:"backend_package,omitempty"`
-	WithPrivacy    bool        `json:"with_privacy,omitempty"`
+	WithSecurity   bool        `json:"with_privacy,omitempty"`
+	WithDartClient bool        `json:"with_dart_client,omitempty"`
 }
 
 type Schema struct {

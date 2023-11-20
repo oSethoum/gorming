@@ -2,17 +2,17 @@ package routes
 
 import (
 	"{{ .Config.Package }}/handlers"
-	"{{ .Config.Package }}/models"
+	"{{ .Config.Package }}/db"
 
 	"github.com/gofiber/fiber/v2"
 )
 
-func routes(r fiber.Router) {
+func Routes(r fiber.Router) {
 	{{- range .Schema.Tables }}
 	{{ tableName . }} := r.Group("/{{ tableName . }}")
-	{{ tableName . }}.Get("/", handlers.QueryResource[models.{{ .Name }}]("{{ tableName . }}"))
-	{{ tableName . }}.Post("/", handlers.CreateResource[models.{{ .Name }}]("{{ tableName . }}"))
-	{{ tableName . }}.Patch("/", handlers.UpdateResource[models.{{ .Name }}]("{{ tableName . }}"))
-	{{ tableName . }}.Delete("/", handlers.DeleteResource[models.{{ .Name }}]("{{ tableName . }}"))
+	{{ tableName . }}.Get("/", handlers.QueryResource[db.{{ .Name }}]("{{ tableName . }}"))
+	{{ tableName . }}.Post("/", handlers.CreateResource[db.{{ .Name }}]("{{ tableName . }}"))
+	{{ tableName . }}.Patch("/", handlers.UpdateResource[db.{{ .Name }}]("{{ tableName . }}"))
+	{{ tableName . }}.Delete("/", handlers.DeleteResource[db.{{ .Name }}]("{{ tableName . }}"))
 	{{ end }}
 }

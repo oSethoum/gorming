@@ -52,7 +52,7 @@ export class Api {
   private callbacks?: Map<Event, Callback[]>;
   private socket?: WebSocket;
   private fetch: Fetch = fetch;
-  {{ if .Config.WithPrivacy -}}
+  {{ if .Config.WithSecurity -}}
   private token?: string;
   {{ end -}}
 
@@ -93,7 +93,7 @@ export class Api {
   private constructor(url: string) {
     this.baseURL = url.replace(/\/+$/, "");
   }
-   {{ if .Config.WithPrivacy -}}
+   {{ if .Config.WithSecurity -}}
   setToken(token: string) {
     this.token = token;
   }
@@ -104,7 +104,7 @@ export class Api {
       ...init?.headers,
     };
 
-   {{ if .Config.WithPrivacy -}}
+   {{ if .Config.WithSecurity -}}
     if (!!this.token) {
       headers["Authorization"] = this.token;
     }

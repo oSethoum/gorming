@@ -1,0 +1,62 @@
+package db
+
+import (
+	"context"
+	"strings"
+
+	"gorm.io/gorm"
+)
+
+type contextKey uint
+
+const (
+	DeniedActionsKey contextKey = iota + 1
+	DeniedFieldsKey
+)
+
+func getDeniedFields(ctx context.Context, table string) []string {
+	value := ctx.Value(DeniedFieldsKey)
+	if m, ok := value.(map[string][]string); ok {
+		if fields, ok := m[table]; ok {
+			return fields
+		}
+	}
+	return []string{}
+}
+
+func getDeniedActions(ctx context.Context) map[string]string {
+	value := ctx.Value(DeniedActionsKey)
+	if m, ok := value.(map[string]string); ok {
+		return m
+	}
+	return map[string]string{}
+}
+
+func IsActionDenied(client *gorm.DB, table string, actions ...string) bool {
+	deniedActions := getDeniedActions(client.Statement.Context)
+	tableDeniedActions := deniedActions[table]
+	for _, action := range actions {
+		if action != "" && strings.Contains(tableDeniedActions, action) {
+			return true
+		}
+	}
+	return false
+}
+
+func IsHookActionDenied(client *gorm.DB, action string) (bool, string) {
+	prefix := client.NamingStrategy.TableName("")
+	table := strings.ReplaceAll(client.Statement.Table, prefix, "")
+	deniedActions, ok := getDeniedActions(client.Statement.Context)[table]
+	if ok && strings.Contains(deniedActions, action) {
+		return true, table
+	}
+	return false, table
+}
+
+func IsQueryDenied(client *gorm.DB, table string) bool {
+	return IsActionDenied(client, table, "GET", "ALL")
+}
+
+func DeniedFields(client *gorm.DB, table string) *gorm.DB {
+	return client.Omit(getDeniedFields(client.Statement.Context, table)...)
+}

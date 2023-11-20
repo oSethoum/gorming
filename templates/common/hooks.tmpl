@@ -1,0 +1,21 @@
+package db
+
+import (
+	"fmt"
+
+	"gorm.io/gorm"
+)
+
+func (BaseModel) BeforeCreate(tx *gorm.DB) error {
+	if denied, resource := IsHookActionDenied(tx, "POST"); denied {
+		return fmt.Errorf("authorization: unauthorized access to resource %s", resource)
+	}
+	return nil
+}
+
+func (BaseModel) BeforeUpdate(tx *gorm.DB) error {
+	if denied, resource := IsHookActionDenied(tx, "PATCH"); denied {
+		return fmt.Errorf("authorization: unauthorized access to resource %s", resource)
+	}
+	return nil
+}

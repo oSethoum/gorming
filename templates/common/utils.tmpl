@@ -1,5 +1,7 @@
 package utils
 
+import "golang.org/x/crypto/bcrypt"
+
 func AppendValues[T comparable](array []T, values ...T) ([]T, []T) {
 	appended := []T{}
 	for _, value := range values {
@@ -31,4 +33,14 @@ func InArray[T comparable](array []T, value T) bool {
 		}
 	}
 	return false
+}
+
+func HashPassword(password string) (string, error) {
+	bytes, err := bcrypt.GenerateFromPassword([]byte(password), 8)
+	return string(bytes), err
+}
+
+func CheckPasswordHash(password, hash string) bool {
+	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
+	return err == nil
 }

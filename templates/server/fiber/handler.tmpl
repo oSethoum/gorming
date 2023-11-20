@@ -2,14 +2,15 @@ package handlers
 
 import (
 	"{{ .Config.Package }}/db"
-	"{{ .Config.Package }}/models"
+	"errors"
 	"encoding/json"
 
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
 )
 
-func QueryResource[T models.Model](resource string) fiber.Handler {
+
+func QueryResource[T any](resource string) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		result := new([]T)
 		query := new(db.Query)
@@ -33,7 +34,7 @@ func QueryResource[T models.Model](resource string) fiber.Handler {
 	}
 }
 
-func CreateResource[T models.Model](resource string) fiber.Handler {
+func CreateResource[T any](resource string) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		body := new([]T)
 		err := c.BodyParser(body)
@@ -57,7 +58,7 @@ func CreateResource[T models.Model](resource string) fiber.Handler {
 	}
 }
 
-func UpdateResource[T models.Model](resource string) fiber.Handler {
+func UpdateResource[T any](resource string) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		body := new([]T)
 		err := c.BodyParser(body)
@@ -82,7 +83,7 @@ func UpdateResource[T models.Model](resource string) fiber.Handler {
 	}
 }
 
-func DeleteResource[T models.Model](resource string) fiber.Handler {
+func DeleteResource[T any](resource string) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		body := new(db.Where)
 		err := c.BodyParser(body)
@@ -95,11 +96,13 @@ func DeleteResource[T models.Model](resource string) fiber.Handler {
 				return Error(c, err)
 			}
 		}
-		client := db.Client.WithContext(c.UserContext()).Model(new(T))
 		data := new([]T)
-		client.Where(predicate, vars...).Find(data)
-		client.Delete(predicate, vars...)
-		err = client.Delete(predicate, vars...).Error
+		db.Client.WithContext(c.UserContext()).Model(new(T)).Where(predicate, vars...).Find(data)
+		if len(*data) == 0 {
+			return Error(c, errors.New("delete: nothing to delete"))
+		}
+
+		err = db.Client.WithContext(c.UserContext()).Model(new(T)).Delete(predicate, vars...).Error
 		if err != nil {
 			return Error(c, err)
 		}

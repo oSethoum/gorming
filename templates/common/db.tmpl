@@ -1,6 +1,7 @@
 package db
 
 import (
+    "{{ .Config.Package }}/env"
 	{{ if eq .Config.DBKind "sqlite" }}
 	"fmt"
 	"github.com/oSethoum/sqlite"
@@ -21,21 +22,21 @@ var Client *gorm.DB
 
 func Init() error {
 	{{ if eq .Config.DBKind "sqlite" }}
-	dsn := fmt.Sprintf("file:%s?_fk=1&_pragma_key=%s", "db.sqlite", "")
+	dsn := fmt.Sprintf("file:%s?_fk=1&_pragma_key=%s", env.DB_NAME, env.DB_PASSWORD)
 	dialect := sqlite.Open(dsn)
 	{{ end }}
 
 	{{ if eq .Config.DBKind "mysql" }}
-	dsn := "user:pass@tcp(127.0.0.1:3306)/dbname?charset=utf8mb4&parseTime=True&loc=Local"
+	dsn := fmt.Sprintf("%s:%s@tcp(127.0.0.1:3306)/%s?charset=utf8mb4&parseTime=True&loc=Local", env.DB_USER, env.DB_PASSWORD, env.DB_NAME)
 	dialect := mysql.Open(dsn)
 	{{ end }}
 	{{ if eq .Config.DBKind "postgres" }}
-	dsn := "host=localhost user= password= dbname= port=5432 sslmode=disable"
+	dsn := fmt.Sprintf("host=localhost user=%s password=%s dbname=%s port=5432 sslmode=disable", env.DB_USER, env.DB_PASSWORD, env.DB_NAME)
 	dialect := postgres.Open(dsn)
 	{{ end }}
 	client, err := gorm.Open(dialect, &gorm.Config{
 		PrepareStmt:                              true,
-		{{ if .Config.Debug -}}
+		{{ if .Config.Debug }}
 		Logger:                                   logger.Default.LogMode(logger.Info),
 		{{ end -}}
 	})

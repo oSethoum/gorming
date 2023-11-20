@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"fmt"
 	"regexp"
 	"strings"
 
@@ -15,20 +14,31 @@ type ApiResponseError struct {
 }
 
 func (err ApiResponseError) Error() string {
-	return fmt.Sprintf("error: %s | index: %d", err.MainError.Error(), err.Index)
+	return err.MainError.Error()
 }
 
 func (e *ApiResponseError) Parse() any {
 
 	errorMap := map[string]any{
 		"type":    "other",
-		"index":   e.Index,
 		"message": e.Error(),
+	}
+
+	if e.Index >= 0 {
+		errorMap["index"] = e.Index
 	}
 
 	if mainError, ok := e.MainError.(*validator.Error); ok {
 		errorMap["type"] = "validation"
 		errorMap["validation"] = mainError.FieldsErrors
+	}
+
+	if strings.HasPrefix(e.Error(), "authorization: ") {
+		errorMap["type"] = "authorization"
+	}
+
+	if strings.HasPrefix(e.Error(), "authentication: ") {
+		errorMap["type"] = "authentication"
 	}
 
 	if mainError, ok := e.MainError.(sqlite3.Error); ok {
@@ -41,7 +51,7 @@ func (e *ApiResponseError) Parse() any {
 			details["field"] = field
 		}
 
-		constraint := regexp.MustCompile(`\w+ constraint`).FindString(mainError.Error())
+		constraint := regexp.MustCompile(`\w+(\s*\w+)* constraint`).FindString(mainError.Error())
 
 		if len(constraint) > 0 {
 			details["constraint"] = strings.Split(constraint, " ")[0]

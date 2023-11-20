@@ -1,0 +1,21 @@
+package db
+
+var (
+    relationsMap = map[string]map[string][]string {
+	{{ range .Schema.Tables -}}
+		{{- $table := . -}}
+        "{{ tableName $table }}": {
+        {{ range .Columns -}}
+			{{ $column := . -}}
+            {{ with .Edge -}}
+            {{ if eq .Many2Many "" -}}
+			"{{ tsName $column }}":{"{{ tableNameString .Table }}", "{{ tsNameString .LocalKey }}", "{{ tsNameString .TableKey }}"},
+			{{ else }}
+			"{{ tsName $column }}":{"{{ tableNameString .Table }}", "{{ tsNameString .LocalKey }}", "{{ tsNameString .TableKey }}", "{{ .Many2Many }}", "{{ tsNameString $table.Name }}_id", "{{ tsNameString .Table }}_id"},
+			{{ end -}}
+			{{ end -}} 
+        {{ end -}} 
+      	},
+	{{ end -}}
+    }
+)
