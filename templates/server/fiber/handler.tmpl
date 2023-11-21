@@ -2,13 +2,14 @@ package handlers
 
 import (
 	"{{ .Config.Package }}/db"
-	"errors"
 	"encoding/json"
+	"errors"
+	"reflect"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/oSethoum/validator"
 	"gorm.io/gorm"
 )
-
 
 func QueryResource[T any](resource string) fiber.Handler {
 	return func(c *fiber.Ctx) error {
@@ -36,17 +37,23 @@ func QueryResource[T any](resource string) fiber.Handler {
 
 func CreateResource[T any](resource string) fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		body := new([]T)
-		err := c.BodyParser(body)
+		body := []T{}
+		err := c.BodyParser(&body)
 		if err != nil {
 			return Error(c, err)
 		}
+		if len(body) == 0 {
+			return Error(c, errors.New("empty body"))
+		}
 		err = db.Client.WithContext(c.UserContext()).Transaction(func(tx *gorm.DB) error {
-			for i, v := range *body {
+			for i, v := range body {
+				if err := validator.Struct(v); err != nil {
+					return ApiResponseError{MainError: err, Index: i}
+				}
 				if err := tx.Create(&v).Error; err != nil {
 					return ApiResponseError{MainError: err, Index: i}
 				}
-				(*body)[i] = v
+				body[i] = v
 			}
 			return nil
 		})
@@ -60,26 +67,42 @@ func CreateResource[T any](resource string) fiber.Handler {
 
 func UpdateResource[T any](resource string) fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		body := new([]T)
-		err := c.BodyParser(body)
+		body := []T{}
+		err := c.BodyParser(&body)
 		if err != nil {
 			return Error(c, err)
 		}
+		if len(body) == 0 {
+			return Error(c, errors.New("empty body"))
+		}
+		ids := []any{}
 		db.Client.WithContext(c.UserContext()).Transaction(func(tx *gorm.DB) error {
-			for i, v := range *body {
-				err := tx.Updates(&v).Error
-				if err != nil {
+			for i, v := range body {
+				ids = append(ids, reflect.ValueOf(v).FieldByName("ID").Interface())
+				if err := validator.Struct(v); err != nil {
 					return ApiResponseError{MainError: err, Index: i}
 				}
-				(*body)[i] = v
+				if err := tx.Updates(&v).Error; err != nil {
+					return ApiResponseError{MainError: err, Index: i}
+				}
 			}
 			return nil
 		})
 		if err != nil {
 			return Error(c, err)
 		}
-		go Broadcast(resource+"update", body)
-		return Success(c, body)
+		data := []T{}
+		query := db.Query{Where: &db.Where{Field: &db.Field{Name: "id", Predicate: "in", Value: ids}}}
+		client, err := query.P(db.Client.WithContext(c.UserContext()), resource)
+		if err != nil {
+			return Error(c, err)
+		}
+		err = client.Find(&data).Error
+		if err != nil {
+			return Error(c, err)
+		}
+		go Broadcast(resource+"update", data)
+		return Success(c, data)
 	}
 }
 
@@ -96,10 +119,10 @@ func DeleteResource[T any](resource string) fiber.Handler {
 				return Error(c, err)
 			}
 		}
-		data := new([]T)
+		data := []T{}
 		db.Client.WithContext(c.UserContext()).Model(new(T)).Where(predicate, vars...).Find(data)
-		if len(*data) == 0 {
-			return Error(c, errors.New("delete: nothing to delete"))
+		if len(data) == 0 {
+			return Error(c, errors.New("nothing to delete"))
 		}
 
 		err = db.Client.WithContext(c.UserContext()).Model(new(T)).Delete(predicate, vars...).Error
