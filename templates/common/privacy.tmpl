@@ -58,5 +58,5 @@ func IsQueryDenied(client *gorm.DB, table string) bool {
 }
 
 func DeniedFields(client *gorm.DB, table string) *gorm.DB {
-	return client.Omit(getDeniedFields(client.Statement.Context, table)...)
+	return client.Omit(append(client.Statement.Omits, getDeniedFields(client.Statement.Context, table)...)...)
 }
