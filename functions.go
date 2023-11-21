@@ -12,17 +12,16 @@ import (
 
 func templateFunctions(data *types.TemplateData) template.FuncMap {
 	tsNameFunc := func(column types.Column) string {
-
-		// if len(column.Tags.Json.Name) > 0 {
-		// 	return column.Tags.Json.Name
-		// }
-
 		if data.Config.Case == types.Camel {
 			return utils.Camel(column.Name)
 		}
 
 		if data.Config.Case == types.Snake {
 			return utils.Snake(column.Name)
+		}
+
+		if len(column.Tags.Json.Name) > 0 {
+			return column.Tags.Json.Name
 		}
 
 		return column.Name
@@ -117,11 +116,12 @@ func templateFunctions(data *types.TemplateData) template.FuncMap {
 
 		t := column.RawType
 		typesMap := map[string]string{
-			"Time":  "string",
-			"bool":  "boolean",
-			"int":   "number",
-			"uint":  "number",
-			"float": "number",
+			"Time":   "string",
+			"bool":   "boolean",
+			"int":    "number",
+			"uint":   "number",
+			"float":  "number",
+			"string": "string",
 		}
 
 		for k, v := range typesMap {
@@ -140,6 +140,10 @@ func templateFunctions(data *types.TemplateData) template.FuncMap {
 
 		if strings.Contains(column.Type, "[]") {
 			t += "[]"
+		}
+
+		if t == column.RawType {
+			t = "any"
 		}
 
 		return t

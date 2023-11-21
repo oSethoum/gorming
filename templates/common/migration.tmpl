@@ -3,7 +3,7 @@ package db
 func Migrate() error {
 	return Client.AutoMigrate(
     {{- range .Schema.Tables }}
-       {{ .Name }}{},
+       &{{ .Name }}{},
     {{- end }}
     )
 }
