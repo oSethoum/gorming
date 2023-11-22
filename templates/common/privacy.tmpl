@@ -54,7 +54,7 @@ func IsHookActionDenied(client *gorm.DB, action string) (bool, string) {
 }
 
 func IsQueryDenied(client *gorm.DB, table string) bool {
-	return IsActionDenied(client, table, "GET", "ALL")
+	return IsActionDenied(client, table, "query", "all")
 }
 
 func DeniedFields(client *gorm.DB, table string) *gorm.DB {

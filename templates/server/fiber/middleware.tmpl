@@ -13,8 +13,23 @@ import (
 
 
 func Protected(c *fiber.Ctx) error {
-
 	resource := c.Params("resource")
+	action := "all"
+
+	switch c.Method() {
+	case "GET":
+		action = "query"
+	case "POST":
+		action = "create"
+	case "PATCH":
+		action = "update"
+	case "DELETE":
+		action = "delete"
+	}
+
+	if utils.InArray([]string{"users", "roles"}, resource) {
+		return c.Next()
+	}
 
 	tokenString := c.Cookies("token")
 	if tokenString == "" {
@@ -46,7 +61,7 @@ func Protected(c *fiber.Ctx) error {
 	}
 
 	actions := (*deniedActions)[resource]
-	if strings.Contains(actions, c.Method()) || strings.Contains(actions, "all") {
+	if strings.Contains(actions, action) || strings.Contains(actions, "all") {
 		return Error(c, errors.New("authorization: unauthorized access to resource"), fiber.StatusUnauthorized)
 	}
 
