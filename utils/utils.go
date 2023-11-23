@@ -7,14 +7,23 @@ import (
 	"strings"
 
 	"github.com/iancoleman/strcase"
+	"github.com/jinzhu/inflection"
 )
 
 func Camel(s string) string {
 	return strcase.ToLowerCamel(s)
 }
 
+func Camels(s string) string {
+	return strcase.ToLowerCamel(inflection.Plural(s))
+}
+
 func Snake(s string) string {
 	return strcase.ToSnake(s)
+}
+
+func Snakes(s string) string {
+	return strcase.ToSnake(inflection.Plural(s))
 }
 
 func Choice[T comparable](primary T, backups ...T) T {

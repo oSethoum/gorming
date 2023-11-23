@@ -70,18 +70,35 @@ type Paths struct {
 }
 
 type Config struct {
-	DBKind         DBKind      `json:"db_kind,omitempty"`
-	Case           Case        `json:"case,omitempty"`
-	Server         Server      `json:"server,omitempty"`
-	FilesAction    FilesAction `json:"files_action,omitempty"`
-	Paths          Paths       `json:"paths,omitempty"`
-	Debug          bool        `json:"debug,omitempty"`
-	Files          []File      `json:"files,omitempty"`
-	Package        string      `json:"package,omitempty"`
-	ApiPackage     string      `json:"api_package,omitempty"`
-	BackendPackage string      `json:"backend_package,omitempty"`
-	WithSecurity   bool        `json:"with_privacy,omitempty"`
-	WithDartClient bool        `json:"with_dart_client,omitempty"`
+	DBKind         DBKind        `json:"db_kind,omitempty"`
+	Case           Case          `json:"case,omitempty"`
+	Server         Server        `json:"server,omitempty"`
+	FilesAction    FilesAction   `json:"files_action,omitempty"`
+	Paths          Paths         `json:"paths,omitempty"`
+	Debug          bool          `json:"debug,omitempty"`
+	Files          []File        `json:"files,omitempty"`
+	Package        string        `json:"package,omitempty"`
+	ApiPackage     string        `json:"api_package,omitempty"`
+	BackendPackage string        `json:"backend_package,omitempty"`
+	WithSecurity   bool          `json:"with_security,omitempty"`
+	WithSwagger    bool          `json:"with_swagger,omitempty"`
+	SwaggerConfig  SwaggerConfig `json:"swagger_config,omitempty"`
+	WithDartClient bool          `json:"with_dart_client,omitempty"`
+	SkipRoutes     []SkipRoute   `json:"skip_routes,omitempty"`
+}
+
+type SkipRoute struct {
+	// table name
+	Resource string
+	// create update delete query all
+	Skip string
+}
+
+type SwaggerConfig struct {
+	Output   string `json:"output,omitempty"`
+	BasePath string `json:"base_path,omitempty"`
+	Title    string `json:"title,omitempty"`
+	Version  string `json:"version,omitempty"`
 }
 
 type Schema struct {

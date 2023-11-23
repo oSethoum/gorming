@@ -7,6 +7,7 @@ import (
 	"runtime"
 
 	"github.com/oSethoum/gorming/parser"
+	"github.com/oSethoum/gorming/swagger"
 	"github.com/oSethoum/gorming/types"
 )
 
@@ -58,6 +59,10 @@ func New(config types.Config) types.Engine {
 			if config.WithDartClient {
 				writeTemplate("client/dart/api", path.Join(data.Config.Paths.DartClient, "api.dart"), data, types.FileDartApi)
 				writeTemplate("client/dart/types", path.Join(data.Config.Paths.DartClient, "types.dart"), data, types.FileDartTypes)
+			}
+
+			if config.WithSwagger {
+				writeJSON(path.Join(config.SwaggerConfig.Output, "swagger.json"), swagger.Generate(&config, schema.Tables, schema.Types...))
 			}
 
 		}
