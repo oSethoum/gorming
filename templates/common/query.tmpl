@@ -68,7 +68,7 @@ func (q *Query) P(client *gorm.DB, table string) (*gorm.DB, error) {
 				return nil, fmt.Errorf("query: invalid relation %s", key)
 			}
 			{{ if .Config.WithSecurity -}}
-			if IsQueryDenied(client, relation[0]) {
+			if !IsQueryDenied(client, relation[0]) {
 			{{- end}}
 				if value == nil {
 					client = client.Preload(edge(key))

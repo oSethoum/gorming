@@ -70,6 +70,28 @@ type Schema struct {
 	Required   []string          `json:"required,omitempty"`
 }
 
+func skipRoute(config *types.Config, resource, method string) bool {
+	if config.SkipRoutes != nil {
+		if skips, ok := config.SkipRoutes[resource]; ok {
+			return strings.Contains(skips, method)
+		}
+	}
+	return false
+}
+
+func skipAllRoute(config *types.Config, resource string) bool {
+	if config.SkipRoutes != nil {
+		if skips, ok := config.SkipRoutes[resource]; ok {
+			return strings.Contains(skips, "all") ||
+				(strings.Contains(skips, "query") &&
+					strings.Contains(skips, "create") &&
+					strings.Contains(skips, "update") &&
+					strings.Contains(skips, "delete"))
+		}
+	}
+	return false
+}
+
 func columnName(config *types.Config, column types.Column) string {
 	if config.Case == types.Camel {
 		return utils.Camel(column.Name)
@@ -139,8 +161,15 @@ func Generate(config *types.Config, Tables []types.Table, Types ...types.Table) 
 	paths := map[string]Path{}
 
 	for _, t := range Tables {
-		p := Path{
-			Get: &Operation{
+
+		if skipAllRoute(config, tableName(config, t.Name)) {
+			continue
+		}
+
+		p := Path{}
+
+		if !skipRoute(config, tableName(config, t.Name), "query") {
+			p.Get = &Operation{
 				Tags:        []string{tableName(config, t.Name)},
 				Description: fmt.Sprintf("Query %s", tableName(config, t.Name)),
 				Parameters: []Parameter{
@@ -174,8 +203,11 @@ func Generate(config *types.Config, Tables []types.Table, Types ...types.Table) 
 						},
 					},
 				},
-			},
-			Post: &Operation{
+			}
+		}
+
+		if !skipRoute(config, tableName(config, t.Name), "create") {
+			p.Post = &Operation{
 				Tags:        []string{tableName(config, t.Name)},
 				Description: fmt.Sprintf("Insert %s", tableName(config, t.Name)),
 				RequestBody: &RequestBody{
@@ -221,8 +253,11 @@ func Generate(config *types.Config, Tables []types.Table, Types ...types.Table) 
 						Description: "Internal Server Error",
 					},
 				},
-			},
-			Patch: &Operation{
+			}
+		}
+
+		if !skipRoute(config, tableName(config, t.Name), "update") {
+			p.Patch = &Operation{
 				Tags:        []string{tableName(config, t.Name)},
 				Description: fmt.Sprintf("Update %s", tableName(config, t.Name)),
 				RequestBody: &RequestBody{
@@ -268,8 +303,11 @@ func Generate(config *types.Config, Tables []types.Table, Types ...types.Table) 
 						Description: "Internal Server Error",
 					},
 				},
-			},
-			Delete: &Operation{
+			}
+		}
+
+		if !skipRoute(config, tableName(config, t.Name), "delete") {
+			p.Delete = &Operation{
 				Tags:        []string{tableName(config, t.Name)},
 				Description: fmt.Sprintf("Delete %s", tableName(config, t.Name)),
 				RequestBody: &RequestBody{
@@ -312,8 +350,9 @@ func Generate(config *types.Config, Tables []types.Table, Types ...types.Table) 
 						Description: "Internal Server Error",
 					},
 				},
-			},
+			}
 		}
+
 		paths["/"+tableName(config, t.Name)] = p
 
 		st := Schema{

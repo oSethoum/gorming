@@ -11,6 +11,30 @@ import (
 )
 
 func templateFunctions(data *types.TemplateData) template.FuncMap {
+	ignoreRouteFunc := func(resource string, method string) bool {
+
+		if data.Config.SkipRoutes != nil {
+			if skips, ok := data.Config.SkipRoutes[resource]; ok {
+				return strings.Contains(skips, method)
+			}
+		}
+
+		return false
+	}
+
+	ignoreAllRouteFunc := func(resource string) bool {
+		if data.Config.SkipRoutes != nil {
+			if skips, ok := data.Config.SkipRoutes[resource]; ok {
+				return strings.Contains(skips, "all") ||
+					(strings.Contains(skips, "query") &&
+						strings.Contains(skips, "create") &&
+						strings.Contains(skips, "update") &&
+						strings.Contains(skips, "delete"))
+			}
+		}
+		return false
+	}
+
 	tsNameFunc := func(column types.Column) string {
 		if data.Config.Case == types.Camel {
 			return utils.Camel(column.Name)
@@ -259,5 +283,7 @@ func templateFunctions(data *types.TemplateData) template.FuncMap {
 		"dartName":                 dartNameFunc,
 		"dartOptionalCreate":       dartCreateOptionalFunc,
 		"dartOptionalCreateString": dartCreateOptionalStringFunc,
+		"ignoreRoute":              ignoreRouteFunc,
+		"ignoreAllRoute":           ignoreAllRouteFunc,
 	}
 }
