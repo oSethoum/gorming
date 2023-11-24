@@ -176,9 +176,9 @@ func Generate(config *types.Config, Tables []types.Table, Types ...types.Table) 
 					{
 						In:          "query",
 						Name:        "query",
-						Description: "stringify json object",
+						Description: "JSON format of " + t.Name + "Query",
 						Schema: &Schema{
-							Ref: "#/components/schemas/" + t.Name + "Query",
+							Type: "string",
 						},
 					},
 				},
