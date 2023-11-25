@@ -96,7 +96,7 @@ Configure various paths for generated files.
 
 Choose specific files to generate based on your project requirements.
 
-# Struct Tags
+## Struct Tags
 
 Gorming uses a unified `gorming` struct tag to provide additional configuration options for code generation. Tags are separated by `;` within the `gorming` struct tag, and key-value pairs are separated by `=`. Here are the custom tags available:
 
