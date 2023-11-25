@@ -106,12 +106,12 @@ Override the Swagger type for a specific field.
 
 Example:
 
-````go
+```go
 type User struct {
     ID   uint   `json:"id" gorm:"primaryKey" gorming:"swaggerType=integer"`
     Name string `json:"name" gorm:"not null" gorming:"swaggerType=string"`
 }
-
+```
 ### `tsType`
 
 Override the typescript type for a specific field.
@@ -124,7 +124,7 @@ type User struct {
     Name string `json:"name" gorm:"not null" gorming:"tsType=string"`
 }
 
-````
+```
 
 ### `enum`
 
