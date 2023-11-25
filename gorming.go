@@ -4,7 +4,6 @@ import (
 	"embed"
 	"path"
 	"path/filepath"
-	"runtime"
 
 	"github.com/oSethoum/gorming/parser"
 	"github.com/oSethoum/gorming/swagger"
@@ -41,10 +40,6 @@ func New(config types.Config) types.Engine {
 			writeTemplate("server/fiber/response", filepath.Join(config.Paths.BackendPath, "handlers/response.go"), data, types.FileResponse)
 			writeTemplate("server/fiber/ws", filepath.Join(config.Paths.BackendPath, "handlers/ws.go"), data, types.FileWs)
 			writeTemplate("server/fiber/routes", filepath.Join(config.Paths.BackendPath, "routes/routes.go"), data, types.FileRoutes)
-
-			if runtime.GOOS != "Windows" {
-				writeTemplate("server/fiber/images", filepath.Join(config.Paths.BackendPath, "handlers/images.go"), data, types.FileImages)
-			}
 
 			writeTemplate("client/typescript/api", path.Join(data.Config.Paths.TypescriptClient, "api.ts"), data, types.FileTsApi)
 			writeTemplate("client/typescript/types", path.Join(data.Config.Paths.TypescriptClient, "types.ts"), data, types.FileTsTypes)

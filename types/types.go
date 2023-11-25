@@ -16,7 +16,6 @@ const (
 	FileHooks
 	FileMigration
 	FileQuery
-	FileImages
 	FileError
 	FileResponse
 	FileWs
@@ -25,36 +24,32 @@ const (
 	FileDartApi
 	FileDartTypes
 	FileApi
-	FileMiddleware
-	FileAuthentication
 	FileResource
 	FileTsApi
 	FileTsTypes
 	FileSchema
-	FileEnv
 )
 
 const (
-	SQLite   = "sqlite"
-	MySQL    = "mysql"
-	Postgres = "postgres"
+	SQLite   DBKind = "sqlite"
+	MySQL    DBKind = "mysql"
+	Postgres DBKind = "postgres"
 )
 
 const (
-	Camel = iota + 1
+	Camel Case = iota + 1
 	Pascal
 	Snake
 )
 
 const (
 	Fiber Server = iota + 40
-	Echo
 	Wails
 )
 
 const (
-	Generate      = true
-	DoNotGenerate = false
+	Generate      FilesAction = true
+	DoNotGenerate FilesAction = false
 )
 
 type Engine = func(tables []any, types ...any)
