@@ -50,7 +50,7 @@ func New(config types.Config) types.Engine {
 			}
 
 			if config.WithSwagger {
-				writeJSON(path.Join(config.SwaggerConfig.Output, config.SwaggerConfig.FileName+".json"), swagger.Generate(&config, schema.Tables, schema.Types...))
+				writeJSON(path.Join(config.SwaggerConfig.Output, config.SwaggerConfig.Output), swagger.Generate(&config, schema.Tables, schema.Types...))
 			}
 
 		}

@@ -644,7 +644,7 @@ func Generate(config *types.Config, Tables []types.Table, Types ...types.Table) 
 	if len(config.SwaggerConfig.PreservePaths) > 0 || len(config.SwaggerConfig.PreserveSchemas) > 0 {
 		currentDocs := Swagger{}
 		cwd, _ := os.Getwd()
-		file, err := os.ReadFile(filepath.Join(cwd, config.SwaggerConfig.Output, config.SwaggerConfig.FileName+".json"))
+		file, err := os.ReadFile(filepath.Join(cwd, config.SwaggerConfig.Output, config.SwaggerConfig.Output))
 
 		if err == nil {
 			if err := json.Unmarshal(file, &currentDocs); err == nil {

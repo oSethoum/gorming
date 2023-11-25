@@ -96,6 +96,54 @@ Configure various paths for generated files.
 
 Choose specific files to generate based on your project requirements.
 
+# Struct Tags
+
+Gorming uses a unified `gorming` struct tag to provide additional configuration options for code generation. Tags are separated by `;` within the `gorming` struct tag, and key-value pairs are separated by `=`. Here are the custom tags available:
+
+### `swaggerType`
+
+Override the Swagger type for a specific field.
+
+Example:
+
+````go
+type User struct {
+    ID   uint   `json:"id" gorm:"primaryKey" gorming:"swaggerType=integer"`
+    Name string `json:"name" gorm:"not null" gorming:"swaggerType=string"`
+}
+
+### `tsType`
+
+Override the typescript type for a specific field.
+
+Example:
+
+```go
+type User struct {
+    ID   uint   `json:"id" gorm:"primaryKey" gorming:"tsType=number"`
+    Name string `json:"name" gorm:"not null" gorming:"tsType=string"`
+}
+
+````
+
+### `enum`
+
+indicate enums for string
+
+Example:
+
+```go
+type User struct {
+    Role string `json:"role" gorm:"not null" gorming:"enum=admin,user,guest"`
+}
+
+```
+
+## Roadmap
+
+-   generate data validators
+-   support other clients
+
 ## License
 
 Gorming is licensed under the [License](LICENSE).

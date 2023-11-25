@@ -83,7 +83,6 @@ type Config struct {
 }
 
 type SwaggerConfig struct {
-	FileName        string   `json:"file_name,omitempty"`
 	Output          string   `json:"output,omitempty"`
 	BasePath        string   `json:"base_path,omitempty"`
 	Title           string   `json:"title,omitempty"`
