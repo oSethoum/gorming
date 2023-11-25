@@ -1,8 +1,7 @@
 package db
 
 import (
-	"context"
-	"strings"
+	"log/slog"
 
 	"gorm.io/gorm"
 )
@@ -10,53 +9,25 @@ import (
 type contextKey uint
 
 const (
-	DeniedActionsKey contextKey = iota + 1
-	DeniedFieldsKey
+	PrivacyContextKey contextKey = iota + 1
 )
 
-func getDeniedFields(ctx context.Context, table string) []string {
-	value := ctx.Value(DeniedFieldsKey)
-	if m, ok := value.(map[string][]string); ok {
-		if fields, ok := m[table]; ok {
-			return fields
-		}
-	}
-	return []string{}
-}
-
-func getDeniedActions(ctx context.Context) map[string]string {
-	value := ctx.Value(DeniedActionsKey)
-	if m, ok := value.(map[string]string); ok {
-		return m
-	}
-	return map[string]string{}
-}
-
 func IsActionDenied(client *gorm.DB, table string, actions ...string) bool {
-	deniedActions := getDeniedActions(client.Statement.Context)
-	tableDeniedActions := deniedActions[table]
-	for _, action := range actions {
-		if action != "" && strings.Contains(tableDeniedActions, action) {
-			return true
-		}
-	}
+	slog.Warn("Not Implemented: IsActionDenied")
 	return false
 }
 
 func IsHookActionDenied(client *gorm.DB, action string) (bool, string) {
-	prefix := client.NamingStrategy.TableName("")
-	table := strings.ReplaceAll(client.Statement.Table, prefix, "")
-	deniedActions, ok := getDeniedActions(client.Statement.Context)[table]
-	if ok && strings.Contains(deniedActions, action) {
-		return true, table
-	}
-	return false, table
+	slog.Warn("Not Implemented: IsHookActionDenied")
+	return false, ""
 }
 
 func IsQueryDenied(client *gorm.DB, table string) bool {
-	return IsActionDenied(client, table, "query", "all")
+	slog.Warn("Not Implemented: IsQueryDenied")
+	return false
 }
 
-func DeniedFields(client *gorm.DB, table string) *gorm.DB {
-	return client.Omit(append(client.Statement.Omits, getDeniedFields(client.Statement.Context, table)...)...)
+func OmitDeniedFields(client *gorm.DB, table string) *gorm.DB {
+	slog.Warn("Not Implemented: OmitDeniedFields")
+	return client
 }

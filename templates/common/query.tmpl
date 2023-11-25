@@ -115,7 +115,7 @@ func (q *Query) P(client *gorm.DB, table string) (*gorm.DB, error) {
 	}
 	
 	{{ if .Config.WithSecurity -}}
-	client = DeniedFields(client, table)
+	client = OmitDeniedFields(client, table)
 	{{- end }}
 	if q.Where != nil {
 		query, variables, err := q.Where.P(prefix + table + ".")

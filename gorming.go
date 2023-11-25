@@ -36,7 +36,6 @@ func New(config types.Config) types.Engine {
 			writeTemplate("common/privacy", filepath.Join(config.Paths.BackendPath, "db/privacy.go"), data, types.FileSchema)
 			writeTemplate("common/utils", filepath.Join(config.Paths.BackendPath, "utils/utils.go"), data, types.FileUtils)
 			writeTemplate("common/error", filepath.Join(config.Paths.BackendPath, "handlers/error.go"), data, types.FileError)
-			writeTemplate("common/env", filepath.Join(config.Paths.BackendPath, "env/env.go"), data, types.FileEnv)
 
 			writeTemplate("server/fiber/handler", filepath.Join(config.Paths.BackendPath, "handlers/handler.go"), data, types.FileHandler)
 			writeTemplate("server/fiber/response", filepath.Join(config.Paths.BackendPath, "handlers/response.go"), data, types.FileResponse)
@@ -45,12 +44,6 @@ func New(config types.Config) types.Engine {
 
 			if runtime.GOOS != "Windows" {
 				writeTemplate("server/fiber/images", filepath.Join(config.Paths.BackendPath, "handlers/images.go"), data, types.FileImages)
-			}
-
-			if config.WithSecurity {
-				writeTemplate("common/hooks", filepath.Join(config.Paths.BackendPath, "db/hooks.go"), data, types.FileHooks)
-				writeTemplate("server/fiber/middleware", filepath.Join(config.Paths.BackendPath, "handlers/middleware.go"), data, types.FileMiddleware)
-				writeTemplate("server/fiber/authentication", filepath.Join(config.Paths.BackendPath, "handlers/authentication.go"), data, types.FileAuthentication)
 			}
 
 			writeTemplate("client/typescript/api", path.Join(data.Config.Paths.TypescriptClient, "api.ts"), data, types.FileTsApi)
@@ -62,7 +55,7 @@ func New(config types.Config) types.Engine {
 			}
 
 			if config.WithSwagger {
-				writeJSON(path.Join(config.SwaggerConfig.Output, "swagger.json"), swagger.Generate(&config, schema.Tables, schema.Types...))
+				writeJSON(path.Join(config.SwaggerConfig.Output, config.SwaggerConfig.FileName+".json"), swagger.Generate(&config, schema.Tables, schema.Types...))
 			}
 
 		}

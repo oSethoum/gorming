@@ -88,10 +88,13 @@ type Config struct {
 }
 
 type SwaggerConfig struct {
-	Output   string `json:"output,omitempty"`
-	BasePath string `json:"base_path,omitempty"`
-	Title    string `json:"title,omitempty"`
-	Version  string `json:"version,omitempty"`
+	FileName        string   `json:"file_name,omitempty"`
+	Output          string   `json:"output,omitempty"`
+	BasePath        string   `json:"base_path,omitempty"`
+	Title           string   `json:"title,omitempty"`
+	Version         string   `json:"version,omitempty"`
+	PreservePaths   []string `json:"preserve_paths,omitempty"`
+	PreserveSchemas []string `json:"preserve_schemas,omitempty"`
 }
 
 type Schema struct {

@@ -15,6 +15,7 @@ func defaultConfig(config types.Config) types.Config {
 	config.Paths.TypescriptClient = utils.Choice(config.Paths.TypescriptClient, "client/typescript/gorming")
 	config.Paths.DartClient = utils.Choice(config.Paths.DartClient, "client/dart/gorming")
 	config.Paths.BasePath = utils.Choice(config.Paths.BasePath, basePath)
+	config.SwaggerConfig.FileName = utils.Choice(config.SwaggerConfig.FileName, "swagger")
 	if !utils.In(config.Server, types.Echo, types.Fiber, types.Wails) {
 		config.Server = types.Fiber
 	}

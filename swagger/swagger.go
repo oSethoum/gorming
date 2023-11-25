@@ -1,7 +1,10 @@
 package swagger
 
 import (
+	"encoding/json"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"unicode"
 
@@ -147,6 +150,38 @@ func columnType(t string) string {
 	return "object"
 }
 
+func _200(name string, operation string) Response {
+	s := Schema{Type: "array",
+		Items: &Schema{
+			Ref: "#/components/schemas/" + name,
+		},
+	}
+
+	if operation == "query" {
+		s = Schema{
+			Type: "object", Properties: map[string]Schema{
+				"count":  {Type: "number"},
+				"result": s,
+			},
+		}
+	}
+
+	return Response{
+		Description: "Success",
+		Content: Content{
+			"application/json": {
+				Schema: &Schema{
+					Type: "object",
+					Properties: map[string]Schema{
+						"status": {Type: "string", Enum: []string{"success"}},
+						"data":   s,
+					},
+				},
+			},
+		},
+	}
+}
+
 func Generate(config *types.Config, Tables []types.Table, Types ...types.Table) Swagger {
 	docs := Swagger{
 		OpenAPI: "3.0.2",
@@ -159,6 +194,80 @@ func Generate(config *types.Config, Tables []types.Table, Types ...types.Table) 
 		Schemas: map[string]Schema{},
 	}
 	paths := map[string]Path{}
+
+	// standard responses
+
+	_401 := Response{
+		Description: "Unauthorized request",
+		Content: Content{
+			"application/json": {
+				Schema: &Schema{
+					Type: "object",
+					Properties: map[string]Schema{
+						"status": {
+							Type: "string",
+							Enum: []string{"error"},
+						},
+						"error": {
+							Type: "object",
+							Properties: map[string]Schema{
+								"type":    {Type: "string", Enum: []string{"authorization"}},
+								"message": {Type: "string"},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	_400 := Response{
+		Description: "Bad request",
+		Content: Content{
+			"application/json": {
+				Schema: &Schema{
+					Type: "object",
+					Properties: map[string]Schema{
+						"status": {
+							Type: "string",
+							Enum: []string{"error"},
+						},
+						"error": {
+							Type: "object",
+							Properties: map[string]Schema{
+								"type":    {Type: "string", Enum: []string{"authentication", "validation", ""}},
+								"message": {Type: "string"},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	_500 := Response{
+		Description: "Internal server error",
+		Content: Content{
+			"application/json": {
+				Schema: &Schema{
+					Type: "object",
+					Properties: map[string]Schema{
+						"status": {
+							Type: "string",
+							Enum: []string{"error"},
+						},
+						"error": {
+							Type: "object",
+							Properties: map[string]Schema{
+								"type":    {Type: "string", Enum: []string{"authentication", "validation", ""}},
+								"message": {Type: "string"},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
 
 	for _, t := range Tables {
 
@@ -183,25 +292,10 @@ func Generate(config *types.Config, Tables []types.Table, Types ...types.Table) 
 					},
 				},
 				Responses: map[string]Response{
-					"200": {
-						Description: "Success",
-						Content: Content{
-							"application/json": {
-								Schema: &Schema{
-									Type: "object",
-									Properties: map[string]Schema{
-										"count": {Type: "number"},
-										"data": {
-											Type: "array",
-											Items: &Schema{
-												Ref: "#/components/schemas/" + t.Name,
-											},
-										},
-									},
-								},
-							},
-						},
-					},
+					"200": _200(t.Name, "query"),
+					"401": _401,
+					"400": _400,
+					"500": _500,
 				},
 			}
 		}
@@ -223,35 +317,10 @@ func Generate(config *types.Config, Tables []types.Table, Types ...types.Table) 
 					},
 				},
 				Responses: map[string]Response{
-					"200": {
-						Description: "Success",
-						Content: Content{
-							"application/json": {
-								Schema: &Schema{
-									Type: "array",
-									Items: &Schema{
-										Ref: "#/components/schemas/" + t.Name,
-									},
-								},
-							},
-						},
-					},
-					"400": {
-						Description: "Bad request",
-						Content: Content{
-							"application/json": {
-								Schema: &Schema{
-									Type: "object",
-									Properties: map[string]Schema{
-										"type": {Type: "string", Enum: []string{"validation", "database"}},
-									},
-								},
-							},
-						},
-					},
-					"500": {
-						Description: "Internal Server Error",
-					},
+					"200": _200(t.Name, "create"),
+					"401": _401,
+					"400": _400,
+					"500": _500,
 				},
 			}
 		}
@@ -273,35 +342,10 @@ func Generate(config *types.Config, Tables []types.Table, Types ...types.Table) 
 					},
 				},
 				Responses: map[string]Response{
-					"200": {
-						Description: "Success",
-						Content: Content{
-							"application/json": {
-								Schema: &Schema{
-									Type: "array",
-									Items: &Schema{
-										Ref: "#/components/schemas/" + t.Name,
-									},
-								},
-							},
-						},
-					},
-					"400": {
-						Description: "Bad request",
-						Content: Content{
-							"application/json": {
-								Schema: &Schema{
-									Type: "object",
-									Properties: map[string]Schema{
-										"type": {Type: "string", Enum: []string{"validation", "database"}},
-									},
-								},
-							},
-						},
-					},
-					"500": {
-						Description: "Internal Server Error",
-					},
+					"200": _200(t.Name, "update"),
+					"401": _401,
+					"400": _400,
+					"500": _500,
 				},
 			}
 		}
@@ -320,35 +364,10 @@ func Generate(config *types.Config, Tables []types.Table, Types ...types.Table) 
 					},
 				},
 				Responses: map[string]Response{
-					"200": {
-						Description: "Success",
-						Content: Content{
-							"application/json": {
-								Schema: &Schema{
-									Type: "array",
-									Items: &Schema{
-										Ref: "#/components/schemas/" + t.Name,
-									},
-								},
-							},
-						},
-					},
-					"400": {
-						Description: "Bad request",
-						Content: Content{
-							"application/json": {
-								Schema: &Schema{
-									Type: "object",
-									Properties: map[string]Schema{
-										"type": {Type: "string", Enum: []string{"validation", "database"}},
-									},
-								},
-							},
-						},
-					},
-					"500": {
-						Description: "Internal Server Error",
-					},
+					"200": _200(t.Name, "delete"),
+					"401": _401,
+					"400": _400,
+					"500": _500,
 				},
 			}
 		}
@@ -620,6 +639,32 @@ func Generate(config *types.Config, Tables []types.Table, Types ...types.Table) 
 			}
 		}
 		components.Schemas[t.Name] = tc
+	}
+
+	if len(config.SwaggerConfig.PreservePaths) > 0 || len(config.SwaggerConfig.PreserveSchemas) > 0 {
+		currentDocs := Swagger{}
+		cwd, _ := os.Getwd()
+		file, err := os.ReadFile(filepath.Join(cwd, config.SwaggerConfig.Output, config.SwaggerConfig.FileName+".json"))
+
+		if err == nil {
+			if err := json.Unmarshal(file, &currentDocs); err == nil {
+				for _, v := range config.SwaggerConfig.PreservePaths {
+					for ck, cp := range currentDocs.Paths {
+						if v == ck {
+							paths[v] = cp
+						}
+					}
+				}
+
+				for _, v := range config.SwaggerConfig.PreserveSchemas {
+					for k, s := range currentDocs.Components.Schemas {
+						if v == k {
+							components.Schemas[v] = s
+						}
+					}
+				}
+			}
+		}
 	}
 
 	docs.Paths = paths
