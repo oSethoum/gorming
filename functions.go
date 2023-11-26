@@ -16,7 +16,7 @@ func templateFunctions(data *types.TemplateData) template.FuncMap {
 		if column.RawType == "string" {
 			return `"` + param + `"`
 		}
-		return ""
+		return param
 	}
 
 	tableHasValidationFunc := func(table types.Table) bool {
