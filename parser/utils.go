@@ -67,9 +67,6 @@ func tags(f reflect.StructField) types.Tags {
 			if strings.HasPrefix(value, "enum=") {
 				gormingTag.Enum = strings.Split(utils.CleanString(value, "enum="), ",")
 			}
-			if strings.HasPrefix(value, "skip=") {
-				gormingTag.Skip = strings.Split(utils.CleanString(value, "skip="), ",")
-			}
 			if strings.HasPrefix(value, "tsType=") {
 				gormingTag.TsType = utils.CleanString(value, "tsType=")
 			}
@@ -79,6 +76,119 @@ func tags(f reflect.StructField) types.Tags {
 			if strings.HasPrefix(value, "dartType=") {
 				gormingTag.DartType = utils.CleanString(value, "dartType=")
 			}
+			if strings.HasPrefix(value, "notEmpty") {
+				gormingTag.Validation = append(gormingTag.Validation, types.ValidationTag{
+					Rule: "notEmpty",
+				})
+			}
+			if strings.HasPrefix(value, "minLen=") {
+				gormingTag.Validation = append(gormingTag.Validation,
+					types.ValidationTag{
+						Rule:      "minLen",
+						Parameter: strings.TrimPrefix(value, "minLen="),
+					},
+				)
+			}
+			if strings.HasPrefix(value, "maxLen=") {
+				gormingTag.Validation = append(gormingTag.Validation,
+					types.ValidationTag{
+						Rule:      "maxLen",
+						Parameter: strings.TrimPrefix(value, "maxLen="),
+					},
+				)
+			}
+			if strings.HasPrefix(value, "url") {
+				gormingTag.Validation = append(gormingTag.Validation,
+					types.ValidationTag{
+						Rule: "url",
+					},
+				)
+
+			}
+			if strings.HasPrefix(value, "alphaSpace") {
+				gormingTag.Validation = append(gormingTag.Validation,
+					types.ValidationTag{
+						Rule: "alphaSpace",
+					},
+				)
+			}
+			if strings.HasPrefix(value, "numeric") {
+				gormingTag.Validation = append(gormingTag.Validation,
+					types.ValidationTag{
+						Rule: "numeric",
+					},
+				)
+			}
+
+			if strings.HasPrefix(value, "alpha") {
+				gormingTag.Validation = append(gormingTag.Validation,
+					types.ValidationTag{
+						Rule: "alpha",
+					},
+				)
+			}
+			if strings.HasPrefix(value, "alphanumeric") {
+				gormingTag.Validation = append(gormingTag.Validation,
+					types.ValidationTag{
+						Rule: "alphanumeric",
+					},
+				)
+			}
+			if strings.HasPrefix(value, "cron") {
+				gormingTag.Validation = append(gormingTag.Validation,
+					types.ValidationTag{
+						Rule: "cron",
+					},
+				)
+			}
+			if strings.HasPrefix(value, "email") {
+				gormingTag.Validation = append(gormingTag.Validation,
+					types.ValidationTag{
+						Rule: "email",
+					},
+				)
+			}
+			if strings.HasPrefix(value, "match=") {
+				gormingTag.Validation = append(gormingTag.Validation,
+					types.ValidationTag{
+						Rule:      "match",
+						Parameter: strings.TrimPrefix(value, "prefix="),
+					},
+				)
+			}
+			if strings.HasPrefix(value, "in=") {
+				gormingTag.Validation = append(gormingTag.Validation,
+					types.ValidationTag{
+						Rule:      "in",
+						Parameter: strings.TrimPrefix(value, "in="),
+					},
+				)
+			}
+			if strings.HasPrefix(value, "out=") {
+				gormingTag.Validation = append(gormingTag.Validation,
+					types.ValidationTag{
+						Rule:      "out",
+						Parameter: strings.TrimPrefix(value, "out="),
+					},
+				)
+			}
+			if strings.HasPrefix(value, "min=") {
+				gormingTag.Validation = append(gormingTag.Validation,
+					types.ValidationTag{
+						Rule:      "min",
+						Parameter: strings.TrimPrefix(value, "min="),
+					},
+				)
+			}
+			if strings.HasPrefix(value, "max=") {
+				gormingTag.Validation = append(gormingTag.Validation,
+					types.ValidationTag{
+						Rule:      "max",
+						Parameter: strings.TrimPrefix(value, "max="),
+					},
+				)
+			}
+
 		}
 		tags.Gorming = gormingTag
 	}

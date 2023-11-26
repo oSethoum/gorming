@@ -1,0 +1,307 @@
+package db
+
+{{ if hasRegexValidation }} 
+import "regexp"
+{{ end }}
+
+type Violation struct {
+	Rule      string `json:"rule,omitempty"`
+	Parameter any    `json:"parameter,omitempty"`
+}
+
+type FieldError struct {
+	Violations []Violation `json:"violations,omitempty"`
+	Value      any         `json:"value,omitempty"`
+}
+
+{{ if or (allowValidation "min" "int")  (allowValidation "max" "int") -}} 
+type integer interface {
+	~int | ~int16 | ~int32 | ~int64
+}
+{{ end -}}
+
+{{ if or (allowValidation "min" "uint")  (allowValidation "max" "uint") -}} 
+type uinteger interface {
+	~uint | ~uint16 | ~uint32 | ~uint64
+}
+{{ end -}}
+
+{{ if or (allowValidation "min" "float")  (allowValidation "max" "float") -}} 
+type double interface {
+	~float32 | ~float64
+}
+{{ end -}}
+
+type ValidationError map[string]FieldError
+
+func (e ValidationError) Error() string {
+	return "validation error"
+}
+
+{{ range .Schema.Tables -}}
+
+func (m *{{ .Name }}) Validate() error {
+    {{ if tableHasValidation . | not -}} 
+    return nil
+}
+    {{ continue }}
+    {{ end -}}
+
+	err := ValidationError{}
+    {{ $initialized := false }}
+    {{ range $, $column := .Columns -}}
+    {{ if len $column.Tags.Gorming.Validation | eq 0 }} {{ continue }} {{ end -}}
+    {{ if $initialized | not }} 
+    {{ $initialized = true }}
+    violations := []Violation{} 
+    {{ else }}
+    violations = []Violation{} 
+    {{ end -}}
+    {{ range .Tags.Gorming.Validation -}}
+        {{ if eq .Rule "notEmpty" -}}
+        notEmpty(&violations, m.{{ $column.Name }})
+        {{ end -}}
+        
+        {{ if eq .Rule "url" -}}
+        url(&violations, m.{{ $column.Name }})
+        {{ end -}}
+        
+        {{ if eq .Rule "alpha" -}}
+        alpha(&violations, m.{{ $column.Name }})
+        {{ end -}}
+        
+        {{ if eq .Rule "alphaSpace" -}}
+        alphaSpace(&violations, m.{{ $column.Name }})
+        {{ end -}}
+        
+        {{ if eq .Rule "alphanumeric" -}}
+        alphanumeric(&violations, m.{{ $column.Name }})
+        {{ end -}}
+        
+        {{ if eq .Rule "numeric" -}}
+        numeric(&violations, m.{{ $column.Name }})
+        {{ end -}}
+        
+        {{ if eq .Rule "email" -}}
+        email(&violations, m.{{ $column.Name }})
+        {{ end -}}
+        
+        {{ if eq .Rule "match" -}}
+        match(&violations, m.{{ $column.Name }}, {{ .Parameter }})
+        {{ end -}}
+        
+        {{ if eq .Rule "minLen" -}}
+        minLen(&violations, m.{{ $column.Name }}, {{ .Parameter }})
+        {{ end -}}
+        
+        {{ if eq .Rule "maxLen" -}}
+        minLen(&violations, m.{{ $column.Name }}, {{ .Parameter }})
+        {{ end -}}
+        
+        {{ if and (eq .Rule "min") (eq $column.Type "int") -}}
+        minInt(&violations, m.{{ $column.Name }}, {{ .Parameter }})
+        {{ end -}}
+        
+        {{ if and (eq .Rule "min") (eq $column.Type "uint") -}}
+        minUint(&violations, m.{{ $column.Name }}, {{ .Parameter }})
+        {{ end -}}
+        
+        {{ if and (eq .Rule "min") (eq $column.Type "float") -}}
+        minFloat(&violations, m.{{ $column.Name }}, {{ .Parameter }})
+        {{ end -}}
+        
+        {{ if and (eq .Rule "max") (eq $column.Type "int") -}}
+        maxInt(&violations, m.{{ $column.Name }}, {{ .Parameter }})
+        {{ end -}}
+        
+        {{ if and (eq .Rule "max") (eq $column.Type "uint") -}}
+        maxUint(&violations, m.{{ $column.Name }}, {{ .Parameter }})
+        {{ end -}}
+        
+        {{ if and (eq .Rule "max") (eq $column.Type "float") -}}
+        maxFloat(&violations, m.{{ $column.Name }}, {{ .Parameter }})
+        {{ end -}}
+        
+        {{ if eq .Rule "in" -}}
+        in(&violations, m.{{ $column.Name }},[]{{ $column.RawType }}{ {{ normalizeParam  $column .Parameter }} })
+        {{ end -}}
+        
+        {{ if eq .Rule "out" -}}
+        out(&violations, m.{{ $column.Name }},[]{{ $column.RawType }},{ {{ normalizeParam $column .Parameter }} })
+        {{ end -}}
+    {{ end -}}
+    
+	if len(violations) > 0 {
+		err["{{ tsNameString .Name }}"] = FieldError{Violations: violations, Value: m.{{ $column.Name }}}
+	}
+    {{ end }}
+
+	if len(err) > 0 {
+		return err
+	}
+	return nil
+
+}
+{{ end }}
+
+
+{{ if allowValidation "notEmpty" -}} 
+func notEmpty(violations *[]Violation, value string) {
+	if len(value) == 0 {
+		*violations = append(*violations, Violation{})
+	}
+}
+{{ end -}}
+
+{{ if allowValidation "minLen" -}} 
+func minLen(violations *[]Violation, value string, parameter int) {
+	if len(value) > parameter {
+		*violations = append(*violations, Violation{Rule: "minLen", Parameter: parameter})
+	}
+}
+{{ end -}}
+
+{{ if allowValidation "maxLen" -}} 
+func maxLen(violations *[]Violation, value string, parameter int) {
+	if len(value) > parameter {
+		*violations = append(*violations, Violation{Rule: "maxLen", Parameter: parameter})
+	}
+}
+{{ end -}}
+
+
+{{ if allowValidation "url" -}} 
+func url(violations *[]Violation, value string) {
+	if !regexp.MustCompile(`^(http|https|ftp)://[a-zA-Z0-9-]+(\.[a-zA-Z]{2,})?(:[0-9]+)?(/.*)?$`).MatchString(value) {
+		*violations = append(*violations, Violation{Rule: "url"})
+	}
+}
+{{ end -}}
+
+{{ if allowValidation "alphaSpace" -}} 
+func alphaSpace(violations *[]Violation, value string) {
+	if !regexp.MustCompile("^[a-zA-Z]+(?: [a-zA-Z]+)*$").MatchString(value) {
+		*violations = append(*violations, Violation{Rule: "alphaSpace"})
+	}
+}
+{{ end -}}
+
+{{ if allowValidation "numeric" -}} 
+func numeric(violations *[]Violation, value string) {
+	if !regexp.MustCompile("^[-+]?[0-9]+(?:\\.[0-9]+)?$").MatchString(value) {
+		*violations = append(*violations, Violation{Rule: "numeric"})
+	}
+}
+{{ end -}}
+
+{{ if allowValidation "alpha" -}} 
+func alpha(violations *[]Violation, value string) {
+	if !regexp.MustCompile("^[a-zA-Z]+$").MatchString(value) {
+		*violations = append(*violations, Violation{Rule: "alpha"})
+	}
+}
+{{ end -}}
+
+{{ if allowValidation "alphanumeric" -}} 
+func alphanumeric(violations *[]Violation, value string) {
+	if !regexp.MustCompile("^[a-zA-Z0-9]+$").MatchString(value) {
+		*violations = append(*violations, Violation{Rule: "alphanumeric"})
+	}
+}
+{{ end -}}
+
+{{ if allowValidation "cron" -}} 
+func cron(violations *[]Violation, value string) {
+	if !regexp.MustCompile(`(@(annually|yearly|monthly|weekly|daily|hourly|reboot))|(@every (\d+(ns|us|µs|ms|s|m|h))+)|((((\d+,)+\d+|(\d+(\/|-)\d+)|\d+|\*) ?){5,7})`).MatchString(value) {
+		*violations = append(*violations, Violation{Rule: "corn"})
+	}
+}
+{{ end -}}
+
+
+{{ if allowValidation "email" -}} 
+func email(violations *[]Violation, value string) {
+	if !regexp.MustCompile("^(?:(?:(?:(?:[a-zA-Z]|\\d|[!#\\$%&'\\*\\+\\-\\/=\\?\\^_`{\\|}~]|[\\x{00A0}-\\x{D7FF}\\x{F900}-\\x{FDCF}\\x{FDF0}-\\x{FFEF}])+(?:\\.([a-zA-Z]|\\d|[!#\\$%&'\\*\\+\\-\\/=\\?\\^_`{\\|}~]|[\\x{00A0}-\\x{D7FF}\\x{F900}-\\x{FDCF}\\x{FDF0}-\\x{FFEF}])+)*)|(?:(?:\\x22)(?:(?:(?:(?:\\x20|\\x09)*(?:\\x0d\\x0a))?(?:\\x20|\\x09)+)?(?:(?:[\\x01-\\x08\\x0b\\x0c\\x0e-\\x1f\\x7f]|\\x21|[\\x23-\\x5b]|[\\x5d-\\x7e]|[\\x{00A0}-\\x{D7FF}\\x{F900}-\\x{FDCF}\\x{FDF0}-\\x{FFEF}])|(?:(?:[\\x01-\\x09\\x0b\\x0c\\x0d-\\x7f]|[\\x{00A0}-\\x{D7FF}\\x{F900}-\\x{FDCF}\\x{FDF0}-\\x{FFEF}]))))*(?:(?:(?:\\x20|\\x09)*(?:\\x0d\\x0a))?(\\x20|\\x09)+)?(?:\\x22))))@(?:(?:(?:[a-zA-Z]|\\d|[\\x{00A0}-\\x{D7FF}\\x{F900}-\\x{FDCF}\\x{FDF0}-\\x{FFEF}])|(?:(?:[a-zA-Z]|\\d|[\\x{00A0}-\\x{D7FF}\\x{F900}-\\x{FDCF}\\x{FDF0}-\\x{FFEF}])(?:[a-zA-Z]|\\d|-|\\.|~|[\\x{00A0}-\\x{D7FF}\\x{F900}-\\x{FDCF}\\x{FDF0}-\\x{FFEF}])*(?:[a-zA-Z]|\\d|[\\x{00A0}-\\x{D7FF}\\x{F900}-\\x{FDCF}\\x{FDF0}-\\x{FFEF}])))\\.)+(?:(?:[a-zA-Z]|[\\x{00A0}-\\x{D7FF}\\x{F900}-\\x{FDCF}\\x{FDF0}-\\x{FFEF}])|(?:(?:[a-zA-Z]|[\\x{00A0}-\\x{D7FF}\\x{F900}-\\x{FDCF}\\x{FDF0}-\\x{FFEF}])(?:[a-zA-Z]|\\d|-|\\.|~|[\\x{00A0}-\\x{D7FF}\\x{F900}-\\x{FDCF}\\x{FDF0}-\\x{FFEF}])*(?:[a-zA-Z]|[\\x{00A0}-\\x{D7FF}\\x{F900}-\\x{FDCF}\\x{FDF0}-\\x{FFEF}])))\\.?$").MatchString(value) {
+		*violations = append(*violations, Violation{Rule: "email"})
+	}
+}
+{{ end -}}
+
+{{ if allowValidation "match" -}} 
+func match(violations *[]Violation, value string, parameter string) {
+	if !regexp.MustCompile(parameter).MatchString(value) {
+		*violations = append(*violations, Violation{Rule: "match", Parameter: parameter})
+	}
+}
+{{ end -}}
+
+{{ if allowValidation "in" -}} 
+func in[T comparable](violations *[]Violation, value T, parameter []T) {
+	for i := 0; i < len(parameter); i++ {
+		if parameter[i] == value {
+			return
+		}
+	}
+	*violations = append(*violations, Violation{Rule: "in", Parameter: parameter})
+}
+{{ end -}}
+
+{{ if allowValidation "out" -}} 
+func out[T comparable](violations *[]Violation, value T, parameter []T) {
+	for i := 0; i < len(parameter); i++ {
+		if parameter[i] == value {
+			*violations = append(*violations, Violation{Rule: "in", Parameter: parameter})
+			break
+		}
+	}
+}
+{{ end -}}
+
+
+{{ if allowValidation "min" "int" -}} 
+func minInt[T integer](violations *[]Violation, value T, parameter T) {
+	if value < parameter {
+		*violations = append(*violations, Violation{Rule: "min", Parameter: parameter})
+	}
+}
+{{ end -}}
+
+{{ if allowValidation "max" "int" -}} 
+func maxInt[T uinteger](violations *[]Violation, value T, parameter T) {
+	if value > parameter {
+		*violations = append(*violations, Violation{Rule: "max", Parameter: parameter})
+	}
+}
+{{ end -}}
+
+{{ if allowValidation "min" "uint" -}} 
+func minUint[T uinteger](violations *[]Violation, value T, parameter T) {
+	if value < parameter {
+		*violations = append(*violations, Violation{Rule: "min", Parameter: parameter})
+	}
+}
+{{ end -}}
+
+{{ if allowValidation "max" "uint" -}} 
+func maxUint[T uinteger](violations *[]Violation, value T, parameter T) {
+	if value > parameter {
+		*violations = append(*violations, Violation{Rule: "max", Parameter: parameter})
+	}
+}
+{{ end -}}
+
+{{ if allowValidation "min" "float" -}} 
+func minFloat[T double](violations *[]Violation, value T, parameter T) {
+	if value < parameter {
+		*violations = append(*violations, Violation{Rule: "min", Parameter: parameter})
+	}
+}
+{{ end -}}
+
+{{ if allowValidation "max" "float" -}} 
+func maxFloat[T double](violations *[]Violation, value T, parameter T) {
+	if value > parameter {
+		*violations = append(*violations, Violation{Rule: "max", Parameter: parameter})
+	}
+}
+{{ end -}}

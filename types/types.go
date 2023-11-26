@@ -28,6 +28,7 @@ const (
 	FileTsApi
 	FileTsTypes
 	FileSchema
+	FileValidation
 )
 
 const (
@@ -104,6 +105,11 @@ type Table struct {
 	Skip         []string `json:"skip,omitempty"`
 }
 
+type ValidationTag struct {
+	Rule      string `json:"rule,omitempty"`
+	Parameter string `json:"parameter,omitempty"`
+}
+
 type Tags struct {
 	Gorm    GormTag    `json:"gorm,omitempty"`
 	Gorming GormingTag `json:"gorming_tag,omitempty"`
@@ -111,8 +117,9 @@ type Tags struct {
 }
 
 type TemplateData struct {
-	Schema *Schema `json:"schema,omitempty"`
-	Config Config  `json:"config,omitempty"`
+	Schema         *Schema `json:"schema,omitempty"`
+	ValidationList string  `json:"validation_list,omitempty"`
+	Config         Config  `json:"config,omitempty"`
 }
 
 type GormTag struct {
@@ -126,11 +133,12 @@ type GormTag struct {
 }
 
 type GormingTag struct {
-	TsType      string   `json:"ts_type,omitempty"`
-	DartType    string   `json:"dart_type"`
-	SwaggerType string   `json:"swagger_type,omitempty"`
-	Skip        []string `json:"skip,omitempty"`
-	Enum        []string `json:"enum,omitempty"`
+	TsType      string          `json:"ts_type,omitempty"`
+	DartType    string          `json:"dart_type,omitempty"`
+	SwaggerType string          `json:"swagger_type,omitempty"`
+	Skip        []string        `json:"skip,omitempty"`
+	Enum        []string        `json:"enum,omitempty"`
+	Validation  []ValidationTag `json:"validation,omitempty"`
 }
 
 type JsonTag struct {

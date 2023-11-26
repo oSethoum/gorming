@@ -11,6 +11,59 @@ import (
 )
 
 func templateFunctions(data *types.TemplateData) template.FuncMap {
+
+	normalizeParamFunc := func(column *types.Column, param string) string {
+		if column.RawType == "string" {
+			return `"` + param + `"`
+		}
+		return ""
+	}
+
+	tableHasValidationFunc := func(table types.Table) bool {
+		for _, c := range table.Columns {
+			if len(c.Tags.Gorming.Validation) > 0 {
+				return true
+			}
+		}
+
+		return false
+	}
+
+	allowValidationFunc := func(s string, rawType ...string) bool {
+		for _, t := range data.Schema.Tables {
+			for _, c := range t.Columns {
+				for _, v := range c.Tags.Gorming.Validation {
+					if v.Rule == s && len(rawType) == 0 {
+						return true
+					}
+
+					if v.Rule == s {
+						for _, rt := range rawType {
+							if rt == c.RawType {
+								return true
+							}
+						}
+					}
+
+				}
+			}
+		}
+		return false
+	}
+
+	hasRegexValidationFunc := func() bool {
+		for _, t := range data.Schema.Tables {
+			for _, c := range t.Columns {
+				for _, v := range c.Tags.Gorming.Validation {
+					if utils.In(v.Rule, "url", "email", "numeric", "alpha", "alphanumeric", "number", "alphaSpace") {
+						return true
+					}
+				}
+			}
+		}
+		return false
+	}
+
 	ignoreRouteFunc := func(resource string, method string) bool {
 
 		if data.Config.SkipRoutes != nil {
@@ -285,5 +338,9 @@ func templateFunctions(data *types.TemplateData) template.FuncMap {
 		"dartOptionalCreateString": dartCreateOptionalStringFunc,
 		"ignoreRoute":              ignoreRouteFunc,
 		"ignoreAllRoute":           ignoreAllRouteFunc,
+		"allowValidation":          allowValidationFunc,
+		"hasRegexValidation":       hasRegexValidationFunc,
+		"tableHasValidation":       tableHasValidationFunc,
+		"normalizeParam":           normalizeParamFunc,
 	}
 }
