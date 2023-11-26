@@ -50,14 +50,14 @@ func (m *{{ .Name }}) Validate() error {
 	err := ValidationError{}
     {{ $initialized := false }}
     {{ range $, $column := .Columns -}}
-    {{ if len $column.Tags.Gorming.Validation | eq 0 }} {{ continue }} {{ end -}}
+    {{ if len $column.Tags.Validator | eq 0 }} {{ continue }} {{ end -}}
     {{ if $initialized | not }} 
     {{ $initialized = true }}
     violations := []Violation{} 
     {{ else }}
     violations = []Violation{} 
     {{ end -}}
-    {{ range .Tags.Gorming.Validation -}}
+    {{ range .Tags.Validator -}}
         {{ if eq .Rule "notEmpty" -}}
         notEmpty(&violations, m.{{ $column.Name }})
         {{ end -}}

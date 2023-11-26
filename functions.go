@@ -21,18 +21,17 @@ func templateFunctions(data *types.TemplateData) template.FuncMap {
 
 	tableHasValidationFunc := func(table types.Table) bool {
 		for _, c := range table.Columns {
-			if len(c.Tags.Gorming.Validation) > 0 {
+			if len(c.Tags.Validator) > 0 {
 				return true
 			}
 		}
-
 		return false
 	}
 
 	allowValidationFunc := func(s string, rawType ...string) bool {
 		for _, t := range data.Schema.Tables {
 			for _, c := range t.Columns {
-				for _, v := range c.Tags.Gorming.Validation {
+				for _, v := range c.Tags.Validator {
 					if v.Rule == s && len(rawType) == 0 {
 						return true
 					}
@@ -54,7 +53,7 @@ func templateFunctions(data *types.TemplateData) template.FuncMap {
 	hasRegexValidationFunc := func() bool {
 		for _, t := range data.Schema.Tables {
 			for _, c := range t.Columns {
-				for _, v := range c.Tags.Gorming.Validation {
+				for _, v := range c.Tags.Validator {
 					if utils.In(v.Rule, "url", "email", "numeric", "alpha", "alphanumeric", "number", "alphaSpace") {
 						return true
 					}
@@ -187,8 +186,8 @@ func templateFunctions(data *types.TemplateData) template.FuncMap {
 	}
 
 	tsTypeFunc := func(column types.Column) string {
-		if column.Tags.Gorming.TsType != "" {
-			return column.Tags.Gorming.TsType
+		if column.Tags.Typescript.Type != "" {
+			return column.Tags.Typescript.Type
 		}
 
 		t := column.RawType
@@ -211,8 +210,8 @@ func templateFunctions(data *types.TemplateData) template.FuncMap {
 			t = "string"
 		}
 
-		if len(column.Tags.Gorming.Enum) > 0 {
-			return `"` + strings.Join(column.Tags.Gorming.Enum, `" | "`) + `"`
+		if len(column.Tags.Typescript.Enum) > 0 {
+			return `"` + strings.Join(column.Tags.Typescript.Enum, `" | "`) + `"`
 		}
 
 		if strings.Contains(column.Type, "[]") {
@@ -301,7 +300,6 @@ func templateFunctions(data *types.TemplateData) template.FuncMap {
 		}
 
 		return t
-
 	}
 
 	dartNameFunc := func(column types.Column) string {

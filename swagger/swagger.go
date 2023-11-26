@@ -67,6 +67,7 @@ type Content map[string]struct {
 type Schema struct {
 	Ref        string            `json:"$ref,omitempty"`
 	Type       string            `json:"type,omitempty"`
+	Example    string            `json:"example,omitempty"`
 	Items      *Schema           `json:"items,omitempty"`
 	Properties map[string]Schema `json:"properties,omitempty"`
 	Enum       []string          `json:"enum,omitempty"`
@@ -194,8 +195,6 @@ func Generate(config *types.Config, Tables []types.Table, Types ...types.Table) 
 		Schemas: map[string]Schema{},
 	}
 	paths := map[string]Path{}
-
-	// standard responses
 
 	_401 := Response{
 		Description: "Unauthorized request",
@@ -404,8 +403,8 @@ func Generate(config *types.Config, Tables []types.Table, Types ...types.Table) 
 
 		for _, c := range t.Columns {
 			omits = append(omits, columnName(config, c))
-			if c.Tags.Gorming.SwaggerType != "" {
-				c.Type = c.Tags.Gorming.SwaggerType
+			if c.Tags.Swagger.Type != "" {
+				c.Type = c.Tags.Swagger.Type
 			}
 
 			if c.Tags.Json.Ignore {
@@ -472,18 +471,21 @@ func Generate(config *types.Config, Tables []types.Table, Types ...types.Table) 
 							Items: &Schema{
 								Type: columnType(cType),
 							},
+							Example: c.Tags.Swagger.Example,
 						}
 						sc.Properties[columnName(config, c)] = Schema{
 							Type: "array",
 							Items: &Schema{
 								Type: columnType(cType),
 							},
+							Example: c.Tags.Swagger.Example,
 						}
 						su.Properties[columnName(config, c)] = Schema{
 							Type: "array",
 							Items: &Schema{
 								Type: columnType(cType),
 							},
+							Example: c.Tags.Swagger.Example,
 						}
 					}
 				} else {
@@ -500,32 +502,38 @@ func Generate(config *types.Config, Tables []types.Table, Types ...types.Table) 
 							Ref: "#/components/schemas/" + c.Type,
 						}
 					} else {
-						if len(c.Tags.Gorming.Enum) > 0 {
+						if len(c.Tags.Typescript.Enum) > 0 {
 							st.Properties[columnName(config, c)] = Schema{
-								Type: columnType(c.RawType),
-								Enum: c.Tags.Gorming.Enum,
+								Type:    columnType(c.RawType),
+								Enum:    c.Tags.Typescript.Enum,
+								Example: c.Tags.Swagger.Example,
 							}
 							su.Properties[columnName(config, c)] = Schema{
-								Type: columnType(c.RawType),
-								Enum: c.Tags.Gorming.Enum,
+								Type:    columnType(c.RawType),
+								Enum:    c.Tags.Typescript.Enum,
+								Example: c.Tags.Swagger.Example,
 							}
 							if columnName(config, c) != "id" {
 								sc.Properties[columnName(config, c)] = Schema{
-									Type: columnType(c.RawType),
-									Enum: c.Tags.Gorming.Enum,
+									Type:    columnType(c.RawType),
+									Enum:    c.Tags.Typescript.Enum,
+									Example: c.Tags.Swagger.Example,
 								}
 							}
 						} else {
 							st.Properties[columnName(config, c)] = Schema{
-								Type: columnType(c.Type),
+								Type:    columnType(c.Type),
+								Example: c.Tags.Swagger.Example,
 							}
 							if columnName(config, c) != "id" {
 								sc.Properties[columnName(config, c)] = Schema{
-									Type: columnType(c.Type),
+									Type:    columnType(c.Type),
+									Example: c.Tags.Swagger.Example,
 								}
 							}
 							su.Properties[columnName(config, c)] = Schema{
-								Type: columnType(c.Type),
+								Type:    columnType(c.Type),
+								Example: c.Tags.Swagger.Example,
 							}
 						}
 
@@ -597,6 +605,7 @@ func Generate(config *types.Config, Tables []types.Table, Types ...types.Table) 
 				Ref: "#/components/schemas/" + e.RawType + "Query",
 			}
 		}
+
 		sq.Properties["preloads"] = sp
 		sq.Properties["orders"] = Schema{
 			Type: "object",

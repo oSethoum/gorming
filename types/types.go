@@ -105,15 +105,19 @@ type Table struct {
 	Skip         []string `json:"skip,omitempty"`
 }
 
-type ValidationTag struct {
+type ValidatorTag struct {
 	Rule      string `json:"rule,omitempty"`
 	Parameter string `json:"parameter,omitempty"`
 }
 
 type Tags struct {
-	Gorm    GormTag    `json:"gorm,omitempty"`
-	Gorming GormingTag `json:"gorming_tag,omitempty"`
-	Json    JsonTag    `json:"json,omitempty"`
+	Gorm       GormTag        `json:"gorm,omitempty"`
+	Gorming    GormingTag     `json:"gorming_tag,omitempty"`
+	Json       JsonTag        `json:"json,omitempty"`
+	Typescript TypescriptTag  `json:"typescript,omitempty"`
+	Validator  []ValidatorTag `json:"validator,omitempty"`
+	Swagger    SwaggerTag     `json:"swagger,omitempty"`
+	Dart       DartTag        `json:"dart,omitempty"`
 }
 
 type TemplateData struct {
@@ -132,13 +136,26 @@ type GormTag struct {
 	Many2Many  string `json:"many2many,omitempty"`
 }
 
+type DartTag struct {
+	Type string `json:"type,omitempty"`
+}
+
+type SwaggerTag struct {
+	Type    string `json:"type,omitempty"`
+	Example string `json:"example,omitempty"`
+}
+
+type TypescriptTag struct {
+	Type string   `json:"type,omitempty"`
+	Enum []string `json:"enum,omitempty"`
+}
+
 type GormingTag struct {
-	TsType      string          `json:"ts_type,omitempty"`
-	DartType    string          `json:"dart_type,omitempty"`
-	SwaggerType string          `json:"swagger_type,omitempty"`
-	Skip        []string        `json:"skip,omitempty"`
-	Enum        []string        `json:"enum,omitempty"`
-	Validation  []ValidationTag `json:"validation,omitempty"`
+	TsType      string   `json:"ts_type,omitempty"`
+	DartType    string   `json:"dart_type,omitempty"`
+	SwaggerType string   `json:"swagger_type,omitempty"`
+	Skip        []string `json:"skip,omitempty"`
+	Enum        []string `json:"enum,omitempty"`
 }
 
 type JsonTag struct {
