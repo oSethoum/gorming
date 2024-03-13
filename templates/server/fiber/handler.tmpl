@@ -76,7 +76,7 @@ func UpdateResource[T any](resource string) fiber.Handler {
 			return Error(c, errors.New("empty body"))
 		}
 		ids := []any{}
-		db.Client.WithContext(c.UserContext()).Transaction(func(tx *gorm.DB) error {
+		err = db.Client.WithContext(c.UserContext()).Transaction(func(tx *gorm.DB) error {
 			for i, v := range body {
 				ids = append(ids, reflect.ValueOf(v).FieldByName("ID").Interface())
 				if err := validator.Struct(v); err != nil {
@@ -115,16 +115,13 @@ func DeleteResource[T any](resource string) fiber.Handler {
 		}
 		predicate, vars, err := body.P()
 		if err != nil {
-			if err != nil {
-				return Error(c, err)
-			}
+			return Error(c, err)
 		}
 		data := []T{}
 		db.Client.WithContext(c.UserContext()).Model(new(T)).Where(predicate, vars...).Find(data)
 		if len(data) == 0 {
 			return Error(c, errors.New("nothing to delete"))
 		}
-
 		err = db.Client.WithContext(c.UserContext()).Model(new(T)).Delete(predicate, vars...).Error
 		if err != nil {
 			return Error(c, err)
