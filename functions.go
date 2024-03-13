@@ -88,6 +88,11 @@ func templateFunctions(data *types.TemplateData) template.FuncMap {
 	}
 
 	tsNameFunc := func(column types.Column) string {
+
+		if column.Tags.Json.Name != "" {
+			return column.Tags.Json.Name
+		}
+
 		if data.Config.Case == types.Camel {
 			return utils.Camel(column.Name)
 		}
@@ -218,7 +223,7 @@ func templateFunctions(data *types.TemplateData) template.FuncMap {
 			t += "[]"
 		}
 
-		if t == column.RawType {
+		if t == column.RawType && t != "string" {
 			t = "any"
 		}
 
