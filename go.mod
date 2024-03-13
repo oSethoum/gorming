@@ -1,6 +1,6 @@
 module github.com/oSethoum/gorming
 
-go 1.21.2
+go 1.22
 
 require github.com/jinzhu/inflection v1.0.0
 
