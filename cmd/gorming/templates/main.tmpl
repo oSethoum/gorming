@@ -1,0 +1,47 @@
+//go:build ignore
+// +build ignore
+
+package main
+
+import (
+	"app/db"
+	"os/exec"
+
+	"github.com/oSethoum/gorming"
+	"github.com/oSethoum/gorming/types"
+)
+
+func main() {
+	engine := gorming.New(types.Config{
+		DBKind:       types.SQLite,
+		Case:         types.Snake,
+		Server:       types.Fiber,
+		FilesAction:  types.Generate,
+		WithSecurity: true,
+		Package:      "app",
+		Debug:        true,
+		Files: []types.File{
+			types.FileDB,
+			types.FileApi,
+			types.FileError,
+			types.FileHandler,
+			types.FileHooks,
+			types.FileMigration,
+			types.FilePrivacy,
+			types.FileQuery,
+			types.FileResource,
+			types.FileResponse,
+			types.FileRoutes,
+			types.FileSchema,
+			types.FileSchema,
+			types.FileTsApi,
+			types.FileTsTypes,
+			types.FileUtils,
+			types.FileValidation,
+			types.FileWs,
+		},
+	})
+
+	engine([]any{db.User{}, db.Role{}})
+	exec.Command("gofmt", "-w", "-s", "-l", "../..").Run()
+}
