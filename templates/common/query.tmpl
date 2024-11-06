@@ -19,28 +19,17 @@ type Where struct {
 	Not   *Where   `json:"not,omitempty"`
 	Or    []*Where `json:"or,omitempty"`
 	And   []*Where `json:"and,omitempty"`
-	Field *Field   `json:"field,omitempty"`
-}
-
-type Field struct {
-	Name      string `json:"name,omitempty"`
-	Predicate string `json:"predicate,omitempty"`
-	Value     any    `json:"value,omitempty"`
-}
-
-type Order struct {
-	Field     string `json:"field,omitempty"`
-	Direction string `json:"direction,omitempty"`
+	Field *[3]any  `json:"field,omitempty"`
 }
 
 type Query struct {
 	Select   []string          `json:"select,omitempty"`
 	Omit     []string          `json:"omit,omitempty"`
-	With     map[string]*With  `json:"with,omitempty"`
+	With     map[string]*With  `json:"preload,omitempty"`
 	Limit    *uint             `json:"limit,omitempty"`
 	Offset   *uint             `json:"offset,omitempty"`
 	Where    *Where            `json:"where,omitempty"`
-	Orders   []Order           `json:"orders,omitempty"`
+	Orders   [][2]string       `json:"orders,omitempty"`
 	Preloads map[string]*Query `json:"preloads,omitempty"`
 }
 
@@ -48,11 +37,6 @@ func (q *Query) P(client *gorm.DB, table string) (*gorm.DB, error) {
 	if client == nil {
 		return nil, errors.New("query: gorm client is nil")
 	}
-	{{- if .Config.WithSecurity }}
-	if IsQueryDenied(client, table) {
-		return nil, fmt.Errorf("query: unauthorized access to %s", table)
-	}
-	{{- end }}
 
 	var count uint
 
@@ -67,23 +51,18 @@ func (q *Query) P(client *gorm.DB, table string) (*gorm.DB, error) {
 			if !ok {
 				return nil, fmt.Errorf("query: invalid relation %s", key)
 			}
-			{{ if .Config.WithSecurity -}}
-			if !IsQueryDenied(client, relation[0]) {
-			{{- end}}
-				if value == nil {
-					client = client.Preload(edge(key))
-				} else {
-					client = client.Preload(edge(key), func(db *gorm.DB) *gorm.DB {
-						ndb, err := value.P(db, relation[0])
-						if err != nil {
-							return db
-						}
-						return ndb
-					})
-				}
-			{{ if .Config.WithSecurity -}}
+
+			if value == nil {
+				client = client.Preload(edge(key))
+			} else {
+				client = client.Preload(edge(key), func(db *gorm.DB) *gorm.DB {
+					ndb, err := value.P(db, relation[0])
+					if err != nil {
+						return db
+					}
+					return ndb
+				})
 			}
-			{{- end}}
 
 		}
 	}
@@ -113,10 +92,7 @@ func (q *Query) P(client *gorm.DB, table string) (*gorm.DB, error) {
 	if len(q.Omit) > 0 {
 		client.Omit(q.Omit...)
 	}
-	
-	{{ if .Config.WithSecurity -}}
-	client = OmitDeniedFields(client, table)
-	{{- end }}
+
 	if q.Where != nil {
 		query, variables, err := q.Where.P(prefix + table + ".")
 		if err != nil {
@@ -137,17 +113,17 @@ func (q *Query) P(client *gorm.DB, table string) (*gorm.DB, error) {
 
 	if len(q.Orders) > 0 {
 		for _, order := range q.Orders {
-			if !isField(order.Field) {
-				return nil, fmt.Errorf("order: field %s is not alphanumeric", order.Field)
+			if !isField(order[0]) {
+				return nil, fmt.Errorf("order: field %s is not alphanumeric", order[0])
 			}
-			order.Field = `"` + prefix + table + `"."` + order.Field + `"`
+			order[0] = `"` + prefix + table + `"."` + order[0] + `"`
 
-			if order.Direction == "" {
-				order.Direction = "ASC"
-			} else if strings.ToUpper(order.Direction) != "ASC" && strings.ToUpper(order.Direction) != "DESC" {
-				return nil, fmt.Errorf("order: direction for field %s must be ASC or DESC", order.Field)
+			if order[1] == "" {
+				order[1] = "ASC"
+			} else if strings.ToUpper(order[1]) != "ASC" && strings.ToUpper(order[1]) != "DESC" {
+				return nil, fmt.Errorf("order: direction for field %s must be ASC or DESC", order[0])
 			}
-			client = client.Order(order.Field + " " + order.Direction)
+			client = client.Order(order[0] + " " + order[1])
 		}
 	}
 
@@ -275,52 +251,57 @@ func (w *Where) P(prefixes ...string) (string, []any, error) {
 		variables = append(variables, orVariables...)
 	}
 
+	if len(w.Field) != 3 {
+		return "", nil, fmt.Errorf("where: %+v has to be a valid field", w.Field)
+	}
+
 	if w.Field != nil {
 		var fieldQuery string
-		field := w.Field.Name
-		if !isField(w.Field.Name) {
+		field := fmt.Sprintf("%v", w.Field[0])
+		if !isField(field) {
 			return "", nil, fmt.Errorf("where: %+v has to be a valid field", field)
 		}
-		field = strings.ReplaceAll(prefix+w.Field.Name, `.`, `"."`)
+		field = strings.ReplaceAll(prefix+field, `.`, `"."`)
 
-		switch w.Field.Predicate {
+		switch fmt.Sprintf("%v", w.Field[1]) {
+
 		case "like":
 			fieldQuery = fmt.Sprintf(`"%s" LIKE (?)`, field)
-			variables = append(variables, w.Field.Value)
+			variables = append(variables, w.Field[2])
 		case "null":
 			fieldQuery = fmt.Sprintf(`"%s" IS NULL`, field)
 		case "not null":
 			fieldQuery = fmt.Sprintf(`"%s" IS NOT NULL`, field)
 		case "between":
 			fieldQuery = fmt.Sprintf(`"%s" BETWEEN ? AND ?`, field)
-			value := w.Field.Value.([]any)
+			value := w.Field[0].([]any)
 			variables = append(variables, value[:]...)
 		case "in":
 			fieldQuery = fmt.Sprintf(`"%s" IN (?)`, field)
-			variables = append(variables, w.Field.Value)
+			variables = append(variables, w.Field[2])
 		case "not in":
 			fieldQuery = fmt.Sprintf(`"%s" NOT IN (?)`, field)
-			variables = append(variables, w.Field.Value)
+			variables = append(variables, w.Field[2])
 		case "=":
 			fieldQuery = fmt.Sprintf(`"%s" = ?`, field)
-			variables = append(variables, w.Field.Value)
+			variables = append(variables, w.Field[2])
 		case "<>":
 			fieldQuery = fmt.Sprintf(`"%s" <> ?`, field)
-			variables = append(variables, w.Field.Value)
+			variables = append(variables, w.Field[2])
 		case ">":
 			fieldQuery = fmt.Sprintf(`"%s" > ?`, field)
-			variables = append(variables, w.Field.Value)
+			variables = append(variables, w.Field[2])
 		case ">=":
 			fieldQuery = fmt.Sprintf(`"%s" >= ?`, field)
-			variables = append(variables, w.Field.Value)
+			variables = append(variables, w.Field[2])
 		case "<":
 			fieldQuery = fmt.Sprintf(`"%s" < ?`, field)
-			variables = append(variables, w.Field.Value)
+			variables = append(variables, w.Field[2])
 		case "<=":
 			fieldQuery = fmt.Sprintf(`"%s" <= ?`, field)
-			variables = append(variables, w.Field.Value)
+			variables = append(variables, w.Field[2])
 		default:
-			return "", nil, fmt.Errorf("where: %+v invalid predicate", w.Field.Predicate)
+			return "", nil, fmt.Errorf("where: %+v invalid predicate", w.Field[1])
 		}
 		queries = append(queries, fieldQuery)
 	}

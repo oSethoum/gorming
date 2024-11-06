@@ -1,9 +1,14 @@
 package db
 
+import "errors"
+
 func Migrate() error {
-	return Client.AutoMigrate(
-    {{- range .Schema.Tables }}
-       &{{ .Name }}{},
-    {{- end }}
+    if Client == nil {
+        return errors.New("db: client is nil")
+    }
+    return Client.AutoMigrate(
+        {{- range .Schema.Tables }}
+        &{{ .Name }}{},
+        {{- end }}
     )
 }

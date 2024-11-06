@@ -98,8 +98,9 @@ func tags(f reflect.StructField) types.Tags {
 		tags.Typescript = typescriptTag
 	}
 
-	validatorTagString := strings.TrimSpace(f.Tag.Get("validator"))
+	validatorTagString := strings.TrimSpace(f.Tag.Get("validate"))
 	if len(validatorTagString) > 0 {
+
 		validatorTag := []types.ValidatorTag{}
 		for _, value := range strings.Split(validatorTagString, ";") {
 			if strings.HasPrefix(value, "notEmpty") {

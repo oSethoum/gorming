@@ -8,6 +8,7 @@ import (
 	"github.com/jinzhu/inflection"
 	"github.com/oSethoum/gorming/types"
 	"github.com/oSethoum/gorming/utils"
+	"github.com/samber/lo"
 )
 
 func templateFunctions(data *types.TemplateData) template.FuncMap {
@@ -29,6 +30,7 @@ func templateFunctions(data *types.TemplateData) template.FuncMap {
 	}
 
 	allowValidationFunc := func(s string, rawType ...string) bool {
+
 		for _, t := range data.Schema.Tables {
 			for _, c := range t.Columns {
 				for _, v := range c.Tags.Validator {
@@ -196,6 +198,19 @@ func templateFunctions(data *types.TemplateData) template.FuncMap {
 		}
 
 		t := column.RawType
+		found := false
+		for _, v := range data.Schema.Tables {
+			if v.Name == t {
+				found = true
+			}
+		}
+
+		for _, v := range data.Schema.Types {
+			if v.Name == t {
+				found = true
+			}
+		}
+
 		typesMap := map[string]string{
 			"Time":   "string",
 			"bool":   "boolean",
@@ -223,7 +238,7 @@ func templateFunctions(data *types.TemplateData) template.FuncMap {
 			t += "[]"
 		}
 
-		if t == column.RawType && t != "string" {
+		if t == column.RawType && t != "string" && !found {
 			t = "any"
 		}
 
@@ -311,6 +326,62 @@ func templateFunctions(data *types.TemplateData) template.FuncMap {
 		return utils.Camel(column.Name)
 	}
 
+	cleanRequiredEdgesFunc := func(columns []types.Column) []types.Column {
+		return columns
+	}
+
+	_getRequiredEdges := func(columns []types.Column) [][2]types.Column {
+		out := [][2]types.Column{}
+
+		for _, v := range columns {
+			if v.Edge != nil && v.Edge.Unique {
+				localKeyColumn, ok := lo.Find(columns, func(c types.Column) bool {
+					return c.Edge == nil && c.Name == v.Edge.LocalKey && !strings.HasPrefix(c.Type, "*")
+				})
+				if ok {
+					out = append(out, [2]types.Column{v, localKeyColumn})
+				}
+			}
+		}
+
+		return out
+	}
+
+	requiredEdge := func(column types.Column) bool {
+		return !(utils.In(column.Name, "ID", "CreatedAt", "UpdatedAt", "DeletedAt") ||
+			strings.HasPrefix(column.Type, "*") || column.Edge != nil ||
+			len(column.Tags.Gorm.Default) > 0) && strings.HasSuffix(column.Name, "ID")
+	}
+
+	hasRequiredEdge := func(table types.Table, column types.Column) bool {
+		v := false
+		column.Name += "ID"
+		for _, c := range table.Columns {
+			if c.Name == column.Name && requiredEdge(c) {
+				v = true
+			}
+		}
+		return v
+	}
+
+	tsCreateIgnoreFunc := func(table types.Table, column types.Column) bool {
+		return requiredEdge(column) || hasRequiredEdge(table, column)
+
+	}
+
+	tsCreateUnionFunc := func(table types.Table) string {
+		edges := _getRequiredEdges(table.Columns)
+		buffer := []string{}
+
+		for _, e := range edges {
+			buffer = append(buffer, fmt.Sprintf("({ %s: %sCreateInput } | { %s: %s })", tsNameFunc(e[0]), tsTypeFunc(e[0]), tsNameFunc(e[1]), tsTypeFunc(e[1])))
+		}
+		if len(buffer) > 0 {
+			return " & " + strings.Join(buffer, " & ")
+		}
+		return ""
+	}
+
 	tsOptionalKeyFunc := func(column types.Column) string {
 		if !(utils.In(column.Name, "ID", "CreatedAt", "UpdatedAt", "DeletedAt") ||
 			strings.HasPrefix(column.Type, "*") || column.Edge != nil ||
@@ -345,5 +416,8 @@ func templateFunctions(data *types.TemplateData) template.FuncMap {
 		"hasRegexValidation":       hasRegexValidationFunc,
 		"tableHasValidation":       tableHasValidationFunc,
 		"normalizeParam":           normalizeParamFunc,
+		"tsCreateIgnore":           tsCreateIgnoreFunc,
+		"cleanRequiredEdges":       cleanRequiredEdgesFunc,
+		"tsCreateUnion":            tsCreateUnionFunc,
 	}
 }

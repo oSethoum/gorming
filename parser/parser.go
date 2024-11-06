@@ -139,7 +139,11 @@ func Parse(tablesArray []any, typesArray ...any) *types.Schema {
 	}
 
 	for _, v := range typesArray {
+		if v == nil {
+			continue
+		}
 		t := reflect.ValueOf(v)
+
 		for t.Kind() == reflect.Pointer {
 			t = t.Elem()
 		}

@@ -60,6 +60,7 @@ type FieldMap map[string]reflect.StructField
 type Paths struct {
 	BasePath         string `json:"base_path,omitempty"`
 	BackendPath      string `json:"backend_path,omitempty"`
+	ModelsPath       string `json:"models_path,omitempty"`
 	TypescriptClient string `json:"typescript_client,omitempty"`
 	DartClient       string `json:"dart_client,omitempty"`
 	ApiPath          string `json:"api_path,omitempty"`

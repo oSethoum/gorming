@@ -1,5 +1,5 @@
 {{- range .Schema.Types }}
-export interface {{ .Name }} {
+export type {{ .Name }} = {
     {{ range .Columns -}}
     {{- if .Tags.Json.Ignore}}{{ continue }}{{ end -}}
     {{ tsName . }}{{- tsOptional . -}}: {{ tsType . }};
@@ -8,7 +8,8 @@ export interface {{ .Name }} {
 {{ end }}
 
 {{- range .Schema.Tables }}
-export interface {{ .Name }} {
+
+export type {{ .Name }} = {
     {{ range .Columns -}}
     {{ $column := . }}
     {{- if .Tags.Json.Ignore}}{{ continue }}{{ end -}}
@@ -22,6 +23,7 @@ export interface {{ .Name }} {
 {{ end }}
 
 {{- range .Schema.Tables }}
+{{ $table := . }}
   export type {{ .Name }}Relations = {
     {{ range .Columns -}}
     {{- $column := . -}}
@@ -37,7 +39,7 @@ export interface {{ .Name }} {
   export type {{ .Name }}CreateInput = {
     {{- range .Columns -}}
       {{- $column := . -}}
-      {{- if .Tags.Json.Ignore }}{{ continue }}{{end}}
+      {{- if or ( .Tags.Json.Ignore ) ( tsCreateIgnore $table $column ) }}{{ continue }}{{end}}
       {{- with .Edge }}
       {{ tsName $column }}?: {{- $omit := tsCreateOmit $column -}} {{ $column.RawType }}CreateInput{{- if $column.Slice}}[]{{- end -}};
       {{- else }}
@@ -45,7 +47,7 @@ export interface {{ .Name }} {
       {{ tsName $column }}{{- tsOptionalCreate $column  -}}: {{ tsType $column }};
       {{- end }}
     {{- end }}
-  };
+  } {{ tsCreateUnion $table }};
 
   export type {{ .Name }}UpdateInput = {
     {{- range .Columns -}}
@@ -86,23 +88,7 @@ export type TWhere<T extends keyof TSchema> = {
    not?: TWhere<T>;
    and?: Array<TWhere<T>>;
    or?: Array<TWhere<T>>;
-   field?: TField<T>;
-};
-
-export type TField<T extends keyof TSchema> =
-   | {
-        name: keyof TSchema[T]["fields"];
-        predicate: TNullPredicate;
-     }
-   | {
-        name: keyof TSchema[T]["fields"];
-        predicate: TPredicate;
-        value: any;
-     };
-
-export type TOrder<T extends keyof TSchema> = {
-   field: keyof TSchema[T]["fields"];
-   direction: "ASC" | "DESC";
+   field?: [name: keyof TSchema[T]["fields"], TNullPredicate] | [keyof TSchema[T]["fields"], TPredicate, any];
 };
 
 export type TPredicate =
@@ -127,7 +113,7 @@ export type TQuery<T extends keyof TSchema> = {
    omit?: Array<keyof TSchema[T]["fields"]>;
    offset?: number;
    limit?: number;
-   orders?: Array<TOrder<T>>;
+   orders?: Array<[keyof TSchema[T]["fields"],"ASC"|"DESC"]>;
    where?: TWhere<T>;
    preloads?: TSchema[T]["preloads"];
 };

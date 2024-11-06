@@ -92,7 +92,7 @@ func UpdateResource[T any](resource string) fiber.Handler {
 			return Error(c, err)
 		}
 		data := []T{}
-		query := db.Query{Where: &db.Where{Field: &db.Field{Name: "id", Predicate: "in", Value: ids}}}
+		query := db.Query{Where: &db.Where{Field: &[3]any{"id", "in", ids}}}
 		client, err := query.P(db.Client.WithContext(c.UserContext()), resource)
 		if err != nil {
 			return Error(c, err)
