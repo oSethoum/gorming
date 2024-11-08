@@ -33,12 +33,12 @@ func New(config types.Config) types.Engine {
 		writeTemplate("common/privacy", filepath.Join(config.Paths.BackendPath, "db/privacy.go"), data, types.FileSchema)
 		writeTemplate("common/utils", filepath.Join(config.Paths.BackendPath, "utils/utils.go"), data, types.FileUtils)
 		writeTemplate("common/error", filepath.Join(config.Paths.BackendPath, "handlers/error.go"), data, types.FileError)
-		writeTemplate("fiber/handler", filepath.Join(config.Paths.BackendPath, "handlers/handler.go"), data, types.FileHandler)
-		writeTemplate("fiber/response", filepath.Join(config.Paths.BackendPath, "handlers/response.go"), data, types.FileResponse)
-		writeTemplate("fiber/ws", filepath.Join(config.Paths.BackendPath, "handlers/ws.go"), data, types.FileWs)
-		writeTemplate("fiber/routes", filepath.Join(config.Paths.BackendPath, "routes/routes.go"), data, types.FileRoutes)
-		writeTemplate("typescript/api", path.Join(data.Config.Paths.TypescriptClient, "api.ts"), data, types.FileTsApi)
-		writeTemplate("typescript/types", path.Join(data.Config.Paths.TypescriptClient, "types.ts"), data, types.FileTsTypes)
+		writeTemplate("server/handler", filepath.Join(config.Paths.BackendPath, "handlers/handler.go"), data, types.FileHandler)
+		writeTemplate("server/response", filepath.Join(config.Paths.BackendPath, "handlers/response.go"), data, types.FileResponse)
+		writeTemplate("server/ws", filepath.Join(config.Paths.BackendPath, "handlers/ws.go"), data, types.FileWs)
+		writeTemplate("server/routes", filepath.Join(config.Paths.BackendPath, "routes/routes.go"), data, types.FileRoutes)
+		writeTemplate("client/api", path.Join(data.Config.Paths.TypescriptClient, "api.ts"), data, types.FileTsApi)
+		writeTemplate("client/types", path.Join(data.Config.Paths.TypescriptClient, "types.ts"), data, types.FileTsTypes)
 
 	}
 }
