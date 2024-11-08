@@ -18,17 +18,15 @@ const (
 	FileQuery
 	FileError
 	FileResponse
+	FileMiddlewares
 	FileWs
 	FilePrivacy
 	FileUtils
-	FileDartApi
-	FileDartTypes
 	FileApi
 	FileResource
+	FileSchema
 	FileTsApi
 	FileTsTypes
-	FileSchema
-	FileValidation
 )
 
 const (
@@ -60,9 +58,7 @@ type FieldMap map[string]reflect.StructField
 type Paths struct {
 	BasePath         string `json:"base_path,omitempty"`
 	BackendPath      string `json:"backend_path,omitempty"`
-	ModelsPath       string `json:"models_path,omitempty"`
 	TypescriptClient string `json:"typescript_client,omitempty"`
-	DartClient       string `json:"dart_client,omitempty"`
 	ApiPath          string `json:"api_path,omitempty"`
 }
 
@@ -77,20 +73,7 @@ type Config struct {
 	Package        string            `json:"package,omitempty"`
 	ApiPackage     string            `json:"api_package,omitempty"`
 	BackendPackage string            `json:"backend_package,omitempty"`
-	WithSecurity   bool              `json:"with_security,omitempty"`
-	WithSwagger    bool              `json:"with_swagger,omitempty"`
-	SwaggerConfig  SwaggerConfig     `json:"swagger_config,omitempty"`
-	WithDartClient bool              `json:"with_dart_client,omitempty"`
 	SkipRoutes     map[string]string `json:"skip_routes,omitempty"`
-}
-
-type SwaggerConfig struct {
-	Output          string   `json:"output,omitempty"`
-	BasePath        string   `json:"base_path,omitempty"`
-	Title           string   `json:"title,omitempty"`
-	Version         string   `json:"version,omitempty"`
-	PreservePaths   []string `json:"preserve_paths,omitempty"`
-	PreserveSchemas []string `json:"preserve_schemas,omitempty"`
 }
 
 type Schema struct {

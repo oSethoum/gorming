@@ -7,7 +7,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-func Routes(r fiber.Router) {
+func routes(r fiber.Router) {
 	{{- range .Schema.Tables }}
 	{{ $t := tableName . -}}
 		{{ if ignoreAllRoute $t | not }}

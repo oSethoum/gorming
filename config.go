@@ -13,9 +13,7 @@ func defaultConfig(config types.Config) types.Config {
 	config.Case = utils.Choice(config.Case, types.Snake)
 	config.DBKind = utils.Choice(config.DBKind, types.SQLite)
 	config.Paths.TypescriptClient = utils.Choice(config.Paths.TypescriptClient, "client/typescript/gorming")
-	config.Paths.DartClient = utils.Choice(config.Paths.DartClient, "client/dart/gorming")
 	config.Paths.BasePath = utils.Choice(config.Paths.BasePath, basePath)
-	config.SwaggerConfig.Output = utils.Choice(config.SwaggerConfig.Output, "docs.json")
 	if !utils.In(config.Server, types.Fiber, types.Wails) {
 		config.Server = types.Fiber
 	}
