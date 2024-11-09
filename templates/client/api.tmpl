@@ -52,9 +52,7 @@ export class Api {
   private callbacks?: Map<Event, Callback[]>;
   private socket?: WebSocket;
   private fetch: Fetch = fetch;
-  {{ if .Config.WithSecurity -}}
-  private token?: string;
-  {{ end -}}
+
 
   public static new(url: string, newFetch?: Fetch) {
     if (!Api.instance) {
@@ -93,22 +91,12 @@ export class Api {
   private constructor(url: string) {
     this.baseURL = url.replace(/\/+$/, "");
   }
-   {{ if .Config.WithSecurity -}}
-  setToken(token: string) {
-    this.token = token;
-  }
-   {{ end -}}
+
   async request<T>(url: string, init?: RequestInit): Promise<ApiResponse<T>> {
     const method = init?.method || "GET";
     const headers = {
       ...init?.headers,
     };
-
-   {{ if .Config.WithSecurity -}}
-    if (!!this.token) {
-      headers["Authorization"] = this.token;
-    }
-   {{  end -}}
    
    let response = await this.fetch(`${this.baseURL}${url}`, {
       method,

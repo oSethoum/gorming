@@ -314,5 +314,14 @@ func isField(field string) bool {
 }
 
 func edge(s string) string {
-	return string(unicode.ToUpper(rune(s[0]))) + s[1:]
+	if strings.Contains(s, "_") {
+		ss := ""
+		for _, v := range strings.Split(s, "_") {
+			ss += string(unicode.ToUpper(rune(v[0]))) + v[1:]
+		}
+		return ss
+	} else {
+
+		return string(unicode.ToUpper(rune(s[0]))) + s[1:]
+	}
 }
