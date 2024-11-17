@@ -6,13 +6,13 @@ import (
 	"errors"
 	"reflect"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	"github.com/oSethoum/validator"
 	"gorm.io/gorm"
 )
 
 func QueryResource[T any](resource string) fiber.Handler {
-	return func(c *fiber.Ctx) error {
+	return func(c fiber.Ctx) error {
 		result := new([]T)
 		query := new(db.Query)
 		q := c.Query("query", "{}")
@@ -36,9 +36,9 @@ func QueryResource[T any](resource string) fiber.Handler {
 }
 
 func CreateResource[T any](resource string) fiber.Handler {
-	return func(c *fiber.Ctx) error {
+	return func(c fiber.Ctx) error {
 		body := []T{}
-		err := c.BodyParser(&body)
+		err := c.Bind().Body(&body)
 		if err != nil {
 			return Error(c, err)
 		}
@@ -66,9 +66,9 @@ func CreateResource[T any](resource string) fiber.Handler {
 }
 
 func UpdateResource[T any](resource string) fiber.Handler {
-	return func(c *fiber.Ctx) error {
+	return func(c fiber.Ctx) error {
 		body := []T{}
-		err := c.BodyParser(&body)
+		err := c.Bind().Body(&body)
 		if err != nil {
 			return Error(c, err)
 		}
@@ -107,9 +107,9 @@ func UpdateResource[T any](resource string) fiber.Handler {
 }
 
 func DeleteResource[T any](resource string) fiber.Handler {
-	return func(c *fiber.Ctx) error {
+	return func(c fiber.Ctx) error {
 		body := new(db.Where)
-		err := c.BodyParser(body)
+		err := c.Bind().Body(body)
 		if err != nil {
 			return Error(c, err)
 		}
