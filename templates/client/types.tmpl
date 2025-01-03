@@ -84,25 +84,20 @@ export type TSchema = {
   {{ end }}
 };
 
-export type TWhere<T extends keyof TSchema> = {
+export type TWhere<T extends keyof TSchema, K = keyof TSchema[T]["fields"]> = {
    not?: TWhere<T>;
    and?: Array<TWhere<T>>;
    or?: Array<TWhere<T>>;
-   field?: [name: keyof TSchema[T]["fields"], TNullPredicate] | [keyof TSchema[T]["fields"], TPredicate, any];
+   field?:
+      | [name: K, predicate: TNullPredicate]
+      | [name: K, predicate: TArrayPredicate, Array<any>]
+      | [name: K, predicate: TBetweenPredicate, [any, any]]
+      | [name: K, predicate: TPredicate, any];
 };
 
-export type TPredicate =
-  | "between"
-  | "like"
-  | "in"
-  | "not in"
-  | "="
-  | "<>"
-  | ">"
-  | ">="
-  | "<"
-  | "<=";
-
+export type TPredicate = "like" | "=" | "<>" | ">" | ">=" | "<" | "<=";
+export type TBetweenPredicate = "between";
+export type TArrayPredicate = "in" | "not in";
 export type TNullPredicate = "null" | "not null";
 
 type TWith<T extends keyof TSchema> = TSchema[T]["with"];

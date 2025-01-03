@@ -33,7 +33,6 @@ func main() {
 			types.FileResponse,
 			types.FileRoutes,
 			types.FileSchema,
-			types.FileSchema,
 			types.FileTsApi,
 			types.FileTsTypes,
 			types.FileUtils,
@@ -42,6 +41,6 @@ func main() {
 		},
 	})
 
-	engine([]any{db.User{}, db.Role{}})
+	engine([]any{})
 	exec.Command("gofmt", "-w", "-s", "-l", "../..").Run()
 }
