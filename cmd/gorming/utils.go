@@ -39,7 +39,11 @@ func writeFile(outPath string, data []byte) {
 	if err != nil {
 		log.Fatalf("gorming: %s \n", err.Error())
 	}
-
+	_, err = os.Stat(outPath)
+	if err == nil {
+		// File exist already
+		return
+	}
 	err = os.WriteFile(outPath, data, 07777)
 	if err != nil {
 		log.Fatalf("gorming: %s \n", err.Error())
