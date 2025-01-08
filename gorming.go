@@ -37,8 +37,9 @@ func New(config types.Config) types.Engine {
 		writeTemplate("server/response", filepath.Join(config.Paths.BackendPath, "handlers/response.go"), data, types.FileResponse)
 		writeTemplate("server/ws", filepath.Join(config.Paths.BackendPath, "handlers/ws.go"), data, types.FileWs)
 		writeTemplate("server/routes", filepath.Join(config.Paths.BackendPath, "routes/routes.go"), data, types.FileRoutes)
-		writeTemplate("client/api", path.Join(data.Config.Paths.TypescriptClient, "api.ts"), data, types.FileTsApi)
-		writeTemplate("client/types", path.Join(data.Config.Paths.TypescriptClient, "types.ts"), data, types.FileTsTypes)
-
+		for _, v := range data.Config.Paths.TypescriptClient {
+			writeTemplate("client/api", path.Join(v, "api.ts"), data, types.FileTsApi)
+			writeTemplate("client/types", path.Join(v, "types.ts"), data, types.FileTsTypes)
+		}
 	}
 }

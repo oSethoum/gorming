@@ -1,43 +1,38 @@
 import type { TQuery, TSchema } from "./types";
 
 export type ApiResponseError = {
-  type: "validation" | "database" | "other";
-  index?: number;
-  message: string;
-  validation?: Array<{
-    field: string;
-    tag: string;
-    param?: string;
-    value: string;
-  }>;
-  database?: {
-    field?: string;
-    constraint?: string;
-  };
+   type: "validation" | "database" | "other";
+   index?: number;
+   message: string;
+   validation?: Array<{
+      field: string;
+      tag: string;
+      param?: string;
+      value: string;
+   }>;
+   database?: {
+      field?: string;
+      constraint?: string;
+   };
 };
 
 export type ApiResponse<T> = {
-  code: number;
-  data?: T;
-  error?: ApiResponseError;
-  status: "success" | "error";
+   code: number;
+   data?: T;
+   error?: ApiResponseError;
+   status: "success" | "error";
 };
 
 export type Action = "query" | "create" | "update" | "delete";
 
 export type Event = `${keyof TSchema}:${Action}`;
 
-export type Kind =
-  | "subscribe"
-  | "unsubscribe"
-  | "unsubscribe-all"
-  | "connected"
-  | "notify";
+export type Kind = "subscribe" | "unsubscribe" | "unsubscribe-all" | "connected" | "notify";
 
 export type Message<T = any> = {
-  kind: Kind;
-  event: Event | string;
-  data: T;
+   kind: Kind;
+   event: Event | string;
+   data: T;
 };
 
 const stringify = (data: any) => JSON.stringify(data);
@@ -46,159 +41,160 @@ const parse = (data: string) => JSON.parse(data);
 export type Fetch = typeof fetch;
 export type Callback<T = any> = (message: Message<T>) => void;
 
-export class Api {
-  private readonly baseURL;
-  private static instance: Api;
-  private callbacks?: Map<Event, Callback[]>;
-  private socket?: WebSocket;
-  private fetch: Fetch = fetch;
+let baseURL = "";
+let socket: WebSocket | undefined;
+let eventCallbacks: Map<Event, Callback[]> | undefined;
 
+const ws = () => {
+   if (socket) return;
+   eventCallbacks = new Map<Event, Callback[]>();
+   const wsUrl = baseURL.replace(/^http/, "ws") + "/subscription";
+   socket = new WebSocket(wsUrl);
 
-  public static new(url: string, newFetch?: Fetch) {
-    if (!Api.instance) {
-      Api.instance = new Api(url);
-    }
-    if (!!newFetch) {
-      Api.instance.fetch = newFetch;
-    }
-    return Api.instance;
-  }
-
-  private ws() {
-    if (this.socket) return;
-    this.callbacks = new Map<Event, Callback[]>();
-    const wsUrl = this.baseURL.replace(/^http/, "ws") + "/subscription";
-    this.socket = new WebSocket(wsUrl);
-
-    this.socket.onerror = (e) => {
+   socket.onerror = (e) => {
       console.error(e);
-    };
+   };
 
-    this.socket.onclose = () => {};
+   socket.onclose = () => {};
 
-    this.socket.onmessage = (e) => {
+   socket.onmessage = (e) => {
       const message = parse(e.data);
 
       switch (message.kind) {
-        case "notify":
-          const callbacks = this.callbacks?.get(message.event);
-          callbacks?.forEach((callback) => callback(message));
-          break;
+         case "notify":
+            const callbacks = eventCallbacks?.get(message.event);
+            callbacks?.forEach((callback) => callback(message));
+            break;
       }
-    };
-  }
+   };
+};
 
-  private constructor(url: string) {
-    this.baseURL = url.replace(/\/+$/, "");
-  }
+async function request<T>(url: string, init?: RequestInit & { query?: object }): Promise<ApiResponse<T>> {
+   const path = url;
+   if (init?.query) {
+      url = `${url}?query=${encodeURIComponent(JSON.stringify(init.query))}`;
+   }
 
-  async request<T>(url: string, init?: RequestInit): Promise<ApiResponse<T>> {
-    const method = init?.method || "GET";
-    const headers = {
+   const method = init?.method || "GET";
+   const headers = {
       ...init?.headers,
-    };
-   
-   let response = await this.fetch(`${this.baseURL}${url}`, {
+   };
+
+   let response = await fetch(`${baseURL}${url}`, {
       method,
       ...init,
       headers,
-    });
-    return await response.json();
-  }
+      credentials: "include",
+   });
 
-  async query<T extends keyof TSchema>(resource: T, query?: TQuery<T>) {
-    const url = query
-      ? `/${resource}?query=${encodeURIComponent(JSON.stringify(query))}`
-      : `/${resource}`;
-    return this.request<{ result: Array<TSchema[T]["type"]>; count: number }>(
-      url
-    );
-  }
-
-  async create<T extends keyof TSchema>(
-    resource: T,
-    input: Array<TSchema[T]["create"]>
-  ) {
-    return this.request(`/${resource}`, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-      },
-      body: JSON.stringify(input),
-    });
-  }
-
-  async update<T extends keyof TSchema>(
-    resource: T,
-    input: Array<TSchema[T]["update"]>
-  ) {
-    return this.request<Array<TSchema[T]["type"]>>(`/${resource}`, {
-      method: "PATCH",
-      headers: {
-        "content-type": "application/json",
-      },
-      body: JSON.stringify(input),
-    });
-  }
-
-  async delete<T extends keyof TSchema>(
-    resource: T,
-    where: TQuery<T>["where"]
-  ) {
-    return this.request<Array<TSchema[T]["type"]>>(`/${resource}`, {
-      method: "DELETE",
-      headers: {
-        "content-type": "application/json",
-      },
-      body: JSON.stringify(where),
-    });
-  }
-
-  private send(message: any) {
-    this.ws();
-    if (this.socket) {
-      if (this.socket.readyState != WebSocket.OPEN) {
-        this.socket!.onopen = () => {
-          this.socket?.send(stringify(message));
-        };
-      } else {
-        this.socket?.send(stringify(message));
-      }
-    } else {
-      throw new Error("Error Connecting to websocket");
-    }
-  }
-
-  subscribe(events: Event[], callback: Callback) {
-    events = events.filter((event, index) => events.indexOf(event) == index);
-    this.send({ events, action: "subscribe" });
-    events.forEach((event) => {
-      this.callbacks?.set(event, [
-        ...(this.callbacks?.get(event) || []),
-        callback,
-      ]);
-    });
-  }
-
-  unsubscribe(events: Event[], callback?: Callback) {
-    events = events.filter((event, index) => events.indexOf(event) == index);
-    this.send({ events, action: "unsubscribe" });
-    if (callback) {
-      events.forEach((event) => {
-        this.callbacks?.set(
-          event,
-          this.callbacks?.get(event)?.filter((cb) => cb != callback) || []
-        );
+   const contentType = response.headers.get("content-type");
+   if (contentType == "application/json") {
+      const json = await response.json();
+      console.log({
+         path,
+         query: init?.query,
+         body: init?.body,
+         response: json,
       });
-    } else {
-      events.forEach((event) => {
-        this.callbacks?.set(event, []);
+      return json;
+   } else {
+      const json: ApiResponse<T> = {
+         code: 400,
+         status: "error",
+         error: {
+            type: "other",
+            message: await response.text(),
+         },
+      };
+      console.log({
+         path,
+         query: init?.query,
+         body: init?.body,
+         response: json,
       });
-    }
-  }
-
-  unsubscribeAll() {
-    this.send({ action: "unsubscribe-all" });
-    this.callbacks?.clear();
-  }
+      return json;
+   }
 }
+
+function send(message: any) {
+   ws();
+   if (socket) {
+      if (socket.readyState != WebSocket.OPEN) {
+         socket!.onopen = () => {
+            socket?.send(stringify(message));
+         };
+      } else {
+         socket?.send(stringify(message));
+      }
+   } else {
+      throw new Error("Error Connecting to websocket");
+   }
+}
+
+export const createApi = (url: string) => {
+   baseURL = url;
+   return {
+      request,
+
+      async query<T extends keyof TSchema>(resource: T, query?: TQuery<T>) {
+         return request<{ result: Array<TSchema[T]["type"]>; count: number }>(`/${resource}`, { query });
+      },
+
+      async create<T extends keyof TSchema>(resource: T, input: Array<TSchema[T]["create"]>) {
+         return request<Array<TSchema[T]["type"]>>(`/${resource}`, {
+            method: "POST",
+            headers: {
+               "content-type": "application/json",
+            },
+            body: JSON.stringify(input),
+         });
+      },
+
+      async update<T extends keyof TSchema>(resource: T, input: Array<TSchema[T]["update"]>) {
+         return request<Array<TSchema[T]["type"]>>(`/${resource}`, {
+            method: "PATCH",
+            headers: {
+               "content-type": "application/json",
+            },
+            body: JSON.stringify(input),
+         });
+      },
+
+      async delete<T extends keyof TSchema>(resource: T, where: TQuery<T>["where"]) {
+         return request<Array<TSchema[T]["type"]>>(`/${resource}`, {
+            method: "DELETE",
+            headers: {
+               "content-type": "application/json",
+            },
+            body: JSON.stringify(where),
+         });
+      },
+
+      subscribe(events: Event[], callback: Callback) {
+         events = events.filter((event, index) => events.indexOf(event) == index);
+         send({ events, action: "subscribe" });
+         events.forEach((event) => {
+            eventCallbacks?.set(event, [...(eventCallbacks?.get(event) || []), callback]);
+         });
+      },
+
+      unsubscribe(events: Event[], callback?: Callback) {
+         events = events.filter((event, index) => events.indexOf(event) == index);
+         send({ events, action: "unsubscribe" });
+         if (callback) {
+            events.forEach((event) => {
+               eventCallbacks?.set(event, eventCallbacks?.get(event)?.filter((cb) => cb != callback) || []);
+            });
+         } else {
+            events.forEach((event) => {
+               eventCallbacks?.set(event, []);
+            });
+         }
+      },
+
+      unsubscribeAll() {
+         send({ action: "unsubscribe-all" });
+         eventCallbacks?.clear();
+      },
+   };
+};

@@ -26,8 +26,8 @@ type Query struct {
 	Select   []string          `json:"select,omitempty"`
 	Omit     []string          `json:"omit,omitempty"`
 	With     map[string]*With  `json:"preload,omitempty"`
-	Limit    *uint             `json:"limit,omitempty"`
-	Offset   *uint             `json:"offset,omitempty"`
+	Limit    *int             `json:"limit,omitempty"`
+	Offset   *int             `json:"offset,omitempty"`
 	Where    *Where            `json:"where,omitempty"`
 	Orders   [][2]string       `json:"orders,omitempty"`
 	Preloads map[string]*Query `json:"preloads,omitempty"`

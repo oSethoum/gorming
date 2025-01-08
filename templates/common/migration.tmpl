@@ -3,17 +3,17 @@ package db
 import "errors"
 
 func Migrate() error {
-    if Client == nil {
-        return errors.New("db: client is nil")
+    if DB == nil {
+        return errors.New("db: database client is nil")
     }
 
     {{ if eq .Config.DBKind "sqlite" -}}
-        if err := Client.Exec("PRAGMA foreign_keys = OFF").Error; err != nil {
+        if err := DB.Exec("PRAGMA foreign_keys = OFF").Error; err != nil {
             return err
         }
     {{- end  }}
 
-    if err := Client.AutoMigrate(
+    if err := DB.AutoMigrate(
         {{- range .Schema.Tables }}
         &{{ .Name }}{},
         {{- end }}
@@ -22,7 +22,7 @@ func Migrate() error {
     }
 
     {{ if eq .Config.DBKind "sqlite" -}}
-        if err := Client.Exec("PRAGMA foreign_keys = ON").Error; err != nil {
+        if err := DB.Exec("PRAGMA foreign_keys = ON").Error; err != nil {
             return err
         }
     {{- end  }}

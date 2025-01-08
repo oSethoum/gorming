@@ -26,6 +26,20 @@ func Snakes(s string) string {
 	return strcase.ToSnake(inflection.Plural(s))
 }
 
+func ArrayChoice(primary []string, backups ...[]string) []string {
+
+	if len(primary) > 0 {
+		return primary
+	} else if len(backups) > 0 {
+		for _, backup := range backups {
+			if len(backup) > 0 {
+				return backup
+			}
+		}
+	}
+	return primary
+}
+
 func Choice[T comparable](primary T, backups ...T) T {
 	var empty T
 

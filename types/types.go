@@ -56,10 +56,10 @@ type TypeMap map[string]reflect.Value
 type FieldMap map[string]reflect.StructField
 
 type Paths struct {
-	BasePath         string `json:"base_path,omitempty"`
-	BackendPath      string `json:"backend_path,omitempty"`
-	TypescriptClient string `json:"typescript_client,omitempty"`
-	ApiPath          string `json:"api_path,omitempty"`
+	BasePath         string   `json:"base_path,omitempty"`
+	BackendPath      string   `json:"backend_path,omitempty"`
+	TypescriptClient []string `json:"typescript_client,omitempty"`
+	ApiPath          string   `json:"api_path,omitempty"`
 }
 
 type Config struct {

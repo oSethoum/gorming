@@ -1,5 +1,11 @@
 package db
 
+const (
+	{{ range .Schema.Tables -}}
+	{{ tablePascal . }}Table = "{{ tableName . }}"
+	{{ end }}
+)
+
 var (
     relationsMap = map[string]map[string][]string {
 	{{ range .Schema.Tables -}}

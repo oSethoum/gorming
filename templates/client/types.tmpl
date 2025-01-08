@@ -44,7 +44,7 @@ export type {{ .Name }} = {
       {{ tsName $column }}?: {{- $omit := tsCreateOmit $column -}} {{ $column.RawType }}CreateInput{{- if $column.Slice}}[]{{- end -}};
       {{- else }}
       {{ tsOptionalKey . }}
-      {{ tsName $column }}{{- tsOptionalCreate $column  -}}: {{ tsType $column }};
+      {{ tsName $column }}{{- tsOptionalCreate $column  -}}: {{ tsType $column }}{{- tsNullableCreate $column  -}};
       {{- end }}
     {{- end }}
   } {{ tsCreateUnion $table }};
@@ -56,7 +56,7 @@ export type {{ .Name }} = {
       {{- with .Edge }}
       {{ tsName $column }}?: {{ $column.RawType }}UpdateInput{{- if $column.Slice}}[]{{- end -}};
       {{- else }}
-      {{ tsName $column }}?: {{ tsType $column }};
+      {{ tsName $column }}?: {{ tsType $column }} | null;
       {{- end }}
     {{- end }}
   };
@@ -77,7 +77,7 @@ export type TSchema = {
       with: {
          [K in keyof {{ .Name }}Relations]?: {
             with?: TWith<{{ .Name }}Relations[K]>;
-            where: TWhere<{{ .Name }}Relations[K]>;
+            where?: TWhere<{{ .Name }}Relations[K]>;
          };
       };
   };

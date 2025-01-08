@@ -171,6 +171,10 @@ func templateFunctions(data *types.TemplateData) template.FuncMap {
 		}
 	}
 
+	tablePascalFunc := func(table types.Table) string {
+		return inflection.Plural(table.Name)
+	}
+
 	tableNameFunc := func(table types.Table) string {
 
 		if len(table.Table) > 0 {
@@ -262,6 +266,15 @@ func templateFunctions(data *types.TemplateData) template.FuncMap {
 			strings.HasPrefix(column.Type, "*") || strings.HasSuffix(column.Name, "ID") || column.Edge != nil ||
 			len(column.Tags.Gorm.Default) > 0 {
 			return "?"
+		}
+		return ""
+	}
+
+	tsNullableCreateFunc := func(column types.Column) string {
+		if utils.In(column.Name, "ID", "CreatedAt", "UpdatedAt", "DeletedAt") ||
+			strings.HasPrefix(column.Type, "*") || strings.HasSuffix(column.Name, "ID") || column.Edge != nil ||
+			len(column.Tags.Gorm.Default) > 0 {
+			return " | null"
 		}
 		return ""
 	}
@@ -403,6 +416,7 @@ func templateFunctions(data *types.TemplateData) template.FuncMap {
 		"columnOptionalCreate":     columnOptionalCreateFunc,
 		"uniqueRelations":          uniqueRelationsFunc,
 		"tsOptionalCreate":         tsOptionalCreateFunc,
+		"tsNullableCreate":         tsNullableCreateFunc,
 		"tsOptionalKey":            tsOptionalKeyFunc,
 		"tsOptional":               tsOptionalFunc,
 		"tsCreateOmit":             tsCreateOmitFunc,
@@ -419,5 +433,6 @@ func templateFunctions(data *types.TemplateData) template.FuncMap {
 		"tsCreateIgnore":           tsCreateIgnoreFunc,
 		"cleanRequiredEdges":       cleanRequiredEdgesFunc,
 		"tsCreateUnion":            tsCreateUnionFunc,
+		"tablePascal":              tablePascalFunc,
 	}
 }

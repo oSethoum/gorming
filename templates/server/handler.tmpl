@@ -6,29 +6,47 @@ import (
 	"errors"
 	"reflect"
 
-	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v2"
 	"github.com/oSethoum/validator"
 	"gorm.io/gorm"
 )
 
 func QueryResource[T any](resource string) fiber.Handler {
-	return func(c fiber.Ctx) error {
+	return func(c *fiber.Ctx) error {
 		result := new([]T)
 		query := new(db.Query)
+
 		q := c.Query("query", "{}")
 		err := json.Unmarshal([]byte(q), query)
 		if err != nil {
 			return Error(c, err)
 		}
-		client, err := query.P(db.Client.WithContext(c.UserContext()), resource)
+
+		limit := query.Limit
+		offset := query.Offset
+
+		query.Limit = nil
+		query.Offset = nil
+
+		client, err := query.P(db.DB.WithContext(c.UserContext()), resource)
 		if err != nil {
 			return Error(c, err)
 		}
+
 		var count int64
-		err = client.Find(result).Count(&count).Error
-		if err != nil {
+		if err := client.Model(new(T)).Count(&count).Error; err != nil {
 			return Error(c, err)
 		}
+		if limit != nil {
+			client.Limit(*limit)
+		}
+		if offset != nil {
+			client.Offset(*offset)
+		}
+		if err := client.Find(result).Error; err != nil {
+			return Error(c, err)
+		}
+
 		data := fiber.Map{"count": count, "result": result}
 		go Broadcast(resource+":query", result)
 		return Success(c, data)
@@ -36,16 +54,16 @@ func QueryResource[T any](resource string) fiber.Handler {
 }
 
 func CreateResource[T any](resource string) fiber.Handler {
-	return func(c fiber.Ctx) error {
+	return func(c *fiber.Ctx) error {
 		body := []T{}
-		err := c.Bind().Body(&body)
+		err := c.BodyParser(&body)
 		if err != nil {
 			return Error(c, err)
 		}
 		if len(body) == 0 {
 			return Error(c, errors.New("empty body"))
 		}
-		err = db.Client.WithContext(c.UserContext()).Transaction(func(tx *gorm.DB) error {
+		err = db.DB.WithContext(c.UserContext()).Transaction(func(tx *gorm.DB) error {
 			for i, v := range body {
 				if err := validator.Struct(v); err != nil {
 					return ApiResponseError{MainError: err, Index: i}
@@ -66,9 +84,9 @@ func CreateResource[T any](resource string) fiber.Handler {
 }
 
 func UpdateResource[T any](resource string) fiber.Handler {
-	return func(c fiber.Ctx) error {
+	return func(c *fiber.Ctx) error {
 		body := []T{}
-		err := c.Bind().Body(&body)
+		err := c.BodyParser(&body)
 		if err != nil {
 			return Error(c, err)
 		}
@@ -76,7 +94,7 @@ func UpdateResource[T any](resource string) fiber.Handler {
 			return Error(c, errors.New("empty body"))
 		}
 		ids := []any{}
-		err = db.Client.WithContext(c.UserContext()).Transaction(func(tx *gorm.DB) error {
+		err = db.DB.WithContext(c.UserContext()).Transaction(func(tx *gorm.DB) error {
 			for i, v := range body {
 				ids = append(ids, reflect.ValueOf(v).FieldByName("ID").Interface())
 				if err := validator.Struct(v); err != nil {
@@ -93,7 +111,7 @@ func UpdateResource[T any](resource string) fiber.Handler {
 		}
 		data := []T{}
 		query := db.Query{Where: &db.Where{Field: &[3]any{"id", "in", ids}}}
-		client, err := query.P(db.Client.WithContext(c.UserContext()), resource)
+		client, err := query.P(db.DB.WithContext(c.UserContext()), resource)
 		if err != nil {
 			return Error(c, err)
 		}
@@ -107,9 +125,9 @@ func UpdateResource[T any](resource string) fiber.Handler {
 }
 
 func DeleteResource[T any](resource string) fiber.Handler {
-	return func(c fiber.Ctx) error {
+	return func(c *fiber.Ctx) error {
 		body := new(db.Where)
-		err := c.Bind().Body(body)
+		err := c.BodyParser(body)
 		if err != nil {
 			return Error(c, err)
 		}
@@ -118,11 +136,11 @@ func DeleteResource[T any](resource string) fiber.Handler {
 			return Error(c, err)
 		}
 		data := []T{}
-		db.Client.WithContext(c.UserContext()).Model(new(T)).Where(predicate, vars...).Find(data)
+		db.DB.WithContext(c.UserContext()).Model(new(T)).Where(predicate, vars...).Find(data)
 		if len(data) == 0 {
 			return Error(c, errors.New("nothing to delete"))
 		}
-		err = db.Client.WithContext(c.UserContext()).Model(new(T)).Delete(predicate, vars...).Error
+		err = db.DB.WithContext(c.UserContext()).Model(new(T)).Delete(predicate, vars...).Error
 		if err != nil {
 			return Error(c, err)
 		}

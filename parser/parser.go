@@ -9,7 +9,7 @@ import (
 	"github.com/oSethoum/gorming/utils"
 )
 
-func Tables(tablesMap *types.TypeMap) []types.Table {
+func Tables(tablesMap *types.TypeMap, typesMode bool) []types.Table {
 	tables := []types.Table{}
 
 	for name, table := range *tablesMap {
@@ -18,7 +18,7 @@ func Tables(tablesMap *types.TypeMap) []types.Table {
 
 		newTable := types.Table{
 			Name:    name,
-			Columns: Columns(tablesMap, table.Type()),
+			Columns: Columns(tablesMap, table.Type(), typesMode),
 		}
 		if ok {
 			newTable.Table = method.Call(nil)[0].String()
@@ -30,7 +30,7 @@ func Tables(tablesMap *types.TypeMap) []types.Table {
 	return tables
 }
 
-func Columns(tablesMap *types.TypeMap, table reflect.Type) []types.Column {
+func Columns(tablesMap *types.TypeMap, table reflect.Type, typesMode bool) []types.Column {
 
 	fieldsMap := &types.FieldMap{}
 	fields(fieldsMap, table)
@@ -49,7 +49,7 @@ func Columns(tablesMap *types.TypeMap, table reflect.Type) []types.Column {
 			Slice:   strings.Contains(f.Type.String(), "[]"),
 		}
 
-		if edgeTable, ok := (*tablesMap)[column.RawType]; ok {
+		if edgeTable, ok := (*tablesMap)[column.RawType]; ok && !typesMode {
 			edge := &types.Edge{
 				Table:  column.RawType,
 				Unique: !strings.Contains(column.Type, "[]"),
@@ -121,6 +121,7 @@ func Columns(tablesMap *types.TypeMap, table reflect.Type) []types.Column {
 			}
 			column.Edge = edge
 		}
+
 		columns = append(columns, column)
 	}
 	return columns
@@ -151,7 +152,7 @@ func Parse(tablesArray []any, typesArray ...any) *types.Schema {
 	}
 
 	return &types.Schema{
-		Tables: Tables(&tablesMap),
-		Types:  Tables(&typesMap),
+		Tables: Tables(&tablesMap, false),
+		Types:  Tables(&typesMap, true),
 	}
 }
