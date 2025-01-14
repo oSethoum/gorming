@@ -94,6 +94,9 @@ func tags(f reflect.StructField) types.Tags {
 			if strings.HasPrefix(value, "enum=") {
 				typescriptTag.Enum = strings.Split(utils.CleanString(value, "enum="), ",")
 			}
+			if strings.Contains(value, "skipEdge") {
+				typescriptTag.SkipEdge = true
+			}
 		}
 		tags.Typescript = typescriptTag
 	}

@@ -1,4 +1,4 @@
-import type { TQuery, TSchema } from "./types";
+import { TSchema, TQuery } from "./types";
 
 export type ApiResponseError = {
    type: "validation" | "database" | "other";
@@ -23,121 +23,81 @@ export type ApiResponse<T> = {
    status: "success" | "error";
 };
 
-export type Action = "query" | "create" | "update" | "delete";
+export type Request = <T>(url: string, init?: RequestInit & { query?: object }) => Promise<ApiResponse<T>>;
 
-export type Event = `${keyof TSchema}:${Action}`;
-
-export type Kind = "subscribe" | "unsubscribe" | "unsubscribe-all" | "connected" | "notify";
-
-export type Message<T = any> = {
-   kind: Kind;
-   event: Event | string;
-   data: T;
+export type Config = {
+   debug?: boolean;
+   headers?: { [key in string]: (() => string) | string };
 };
 
-const stringify = (data: any) => JSON.stringify(data);
-const parse = (data: string) => JSON.parse(data);
+export const createRequest = (baseURL: string, config?: Config): Request => {
+   return async <T>(url: string, init?: RequestInit): Promise<ApiResponse<T>> => {
+      const method = init?.method || "GET";
 
-export type Fetch = typeof fetch;
-export type Callback<T = any> = (message: Message<T>) => void;
-
-let baseURL = "";
-let socket: WebSocket | undefined;
-let eventCallbacks: Map<Event, Callback[]> | undefined;
-
-const ws = () => {
-   if (socket) return;
-   eventCallbacks = new Map<Event, Callback[]>();
-   const wsUrl = baseURL.replace(/^http/, "ws") + "/subscription";
-   socket = new WebSocket(wsUrl);
-
-   socket.onerror = (e) => {
-      console.error(e);
-   };
-
-   socket.onclose = () => {};
-
-   socket.onmessage = (e) => {
-      const message = parse(e.data);
-
-      switch (message.kind) {
-         case "notify":
-            const callbacks = eventCallbacks?.get(message.event);
-            callbacks?.forEach((callback) => callback(message));
-            break;
-      }
-   };
-};
-
-async function request<T>(url: string, init?: RequestInit & { query?: object }): Promise<ApiResponse<T>> {
-   const path = url;
-   if (init?.query) {
-      url = `${url}?query=${encodeURIComponent(JSON.stringify(init.query))}`;
-   }
-
-   const method = init?.method || "GET";
-   const headers = {
-      ...init?.headers,
-   };
-
-   let response = await fetch(`${baseURL}${url}`, {
-      method,
-      ...init,
-      headers,
-      credentials: "include",
-   });
-
-   const contentType = response.headers.get("content-type");
-   if (contentType == "application/json") {
-      const json = await response.json();
-      console.log({
-         path,
-         query: init?.query,
-         body: init?.body,
-         response: json,
-      });
-      return json;
-   } else {
-      const json: ApiResponse<T> = {
-         code: 400,
-         status: "error",
-         error: {
-            type: "other",
-            message: await response.text(),
-         },
+      const headers = {
+         ...init?.headers,
       };
-      console.log({
-         path,
-         query: init?.query,
-         body: init?.body,
-         response: json,
-      });
-      return json;
-   }
-}
 
-function send(message: any) {
-   ws();
-   if (socket) {
-      if (socket.readyState != WebSocket.OPEN) {
-         socket!.onopen = () => {
-            socket?.send(stringify(message));
-         };
-      } else {
-         socket?.send(stringify(message));
+      if (config?.headers) {
+         for (const [key, value] of Object.entries(config?.headers)) {
+            if (typeof value == "function") {
+               headers[key] = value();
+            } else {
+               headers[key] = value;
+            }
+         }
       }
-   } else {
-      throw new Error("Error Connecting to websocket");
-   }
-}
 
-export const createApi = (url: string) => {
-   baseURL = url;
+      let response = await fetch(`${baseURL}${url}`, {
+         method,
+         ...init,
+         headers,
+         credentials: "include",
+      });
+
+      const contentType = response.headers.get("content-type");
+      if (contentType == "application/json") {
+         const jsonData = await response.json();
+         if (config?.debug) {
+            console.log({
+               url,
+               query: init?.query,
+               body: init?.body,
+               response: jsonData,
+            });
+         }
+         return jsonData;
+      } else {
+         const json: ApiResponse<T> = {
+            code: 400,
+            status: "error",
+            error: {
+               type: "other",
+               message: await response.text(),
+            },
+         };
+         if (config?.debug) {
+            console.log({
+               url,
+               query: init?.query,
+               body: init?.body,
+               response: json,
+            });
+         }
+         return json;
+      }
+   };
+};
+
+export const createApi = (baseURL: string, config?: Config) => {
+   const request = createRequest(baseURL, config);
    return {
-      request,
-
       async query<T extends keyof TSchema>(resource: T, query?: TQuery<T>) {
-         return request<{ result: Array<TSchema[T]["type"]>; count: number }>(`/${resource}`, { query });
+        let url = `/${resource}`;
+         if (query) {
+            url += `?query=${encodeURIComponent(JSON.stringify(query))}`;
+         }
+         return request<{ result: Array<TSchema[T]["type"]>; count: number }>(url);
       },
 
       async create<T extends keyof TSchema>(resource: T, input: Array<TSchema[T]["create"]>) {
@@ -168,33 +128,6 @@ export const createApi = (url: string) => {
             },
             body: JSON.stringify(where),
          });
-      },
-
-      subscribe(events: Event[], callback: Callback) {
-         events = events.filter((event, index) => events.indexOf(event) == index);
-         send({ events, action: "subscribe" });
-         events.forEach((event) => {
-            eventCallbacks?.set(event, [...(eventCallbacks?.get(event) || []), callback]);
-         });
-      },
-
-      unsubscribe(events: Event[], callback?: Callback) {
-         events = events.filter((event, index) => events.indexOf(event) == index);
-         send({ events, action: "unsubscribe" });
-         if (callback) {
-            events.forEach((event) => {
-               eventCallbacks?.set(event, eventCallbacks?.get(event)?.filter((cb) => cb != callback) || []);
-            });
-         } else {
-            events.forEach((event) => {
-               eventCallbacks?.set(event, []);
-            });
-         }
-      },
-
-      unsubscribeAll() {
-         send({ action: "unsubscribe-all" });
-         eventCallbacks?.clear();
       },
    };
 };

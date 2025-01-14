@@ -1,0 +1,84 @@
+export const createWsApi = <
+   T extends string | number | symbol,
+   Kind = "subscribe" | "unsubscribe" | "unsubscribe-all" | "connected" | "notify"
+>(
+   url: string,
+   reconnectTimeout?: number
+) => {
+   let socket: WebSocket | null = new WebSocket(url);
+   let eventCallbacks = new Map<T, ((message: { event: T; data?: any }) => void)[]>();
+
+   const connect = () => {
+      if (socket == null) {
+         socket = new WebSocket(url);
+
+         socket.onmessage = (e) => {
+            const message: { event: T; kind: Kind; data: any } = JSON.parse(e.data);
+
+            switch (message.kind) {
+               case "notify":
+                  const callbacks = eventCallbacks?.get(message.event);
+                  callbacks?.forEach((callback) => callback({ event: message.event, data: message.data }));
+                  break;
+            }
+         };
+
+         socket.onerror = () => {
+            if (reconnectTimeout) {
+               setTimeout(() => {
+                  connect();
+               }, reconnectTimeout);
+            }
+         };
+      }
+   };
+
+   const send = (message: any) => {
+      connect();
+      if (socket != null) {
+         if (socket.readyState != WebSocket.OPEN) {
+            socket.onopen = () => {
+               socket?.send(JSON.stringify(message));
+            };
+         } else {
+            socket.send(JSON.stringify(message));
+         }
+      } else {
+         throw new Error("Error Connecting to websocket");
+      }
+   };
+
+   const subscribe = (events: Array<T>, callback: (message: { event: T; data?: any }) => void) => {
+      events = events.filter((event, index) => events.indexOf(event) == index);
+      send({ events, action: "subscribe" });
+      events.forEach((event) => {
+         eventCallbacks?.set(event, [...(eventCallbacks?.get(event) || []), callback]);
+      });
+   };
+
+   const unsubscribe = (events: Array<T>, callback?: (message: { event: T; data: any }) => void) => {
+      events = events.filter((event, index) => events.indexOf(event) == index);
+      send({ events, action: "unsubscribe" });
+      if (callback) {
+         events.forEach((event) => {
+            eventCallbacks?.set(event, eventCallbacks?.get(event)?.filter((cb) => cb != callback) || []);
+         });
+      } else {
+         events.forEach((event) => {
+            eventCallbacks?.set(event, []);
+         });
+      }
+   };
+
+   const unsubscribeAll = () => {
+      send({ action: "unsubscribe-all" });
+      eventCallbacks?.clear();
+   };
+
+   return {
+      send,
+      subscribe,
+      unsubscribe,
+      unsubscribeAll,
+   };
+};

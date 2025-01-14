@@ -102,6 +102,7 @@ type Tags struct {
 	Validator  []ValidatorTag `json:"validator,omitempty"`
 	Swagger    SwaggerTag     `json:"swagger,omitempty"`
 	Dart       DartTag        `json:"dart,omitempty"`
+	IgnoreEdge bool           `json:"ignore_edge,omitempty"`
 }
 
 type TemplateData struct {
@@ -130,8 +131,9 @@ type SwaggerTag struct {
 }
 
 type TypescriptTag struct {
-	Type string   `json:"type,omitempty"`
-	Enum []string `json:"enum,omitempty"`
+	Type     string   `json:"type,omitempty"`
+	Enum     []string `json:"enum,omitempty"`
+	SkipEdge bool     `json:"skip_edge,omitempty"`
 }
 
 type GormingTag struct {

@@ -49,7 +49,7 @@ func Columns(tablesMap *types.TypeMap, table reflect.Type, typesMode bool) []typ
 			Slice:   strings.Contains(f.Type.String(), "[]"),
 		}
 
-		if edgeTable, ok := (*tablesMap)[column.RawType]; ok && !typesMode {
+		if edgeTable, ok := (*tablesMap)[column.RawType]; ok && !typesMode && !column.Tags.Typescript.SkipEdge {
 			edge := &types.Edge{
 				Table:  column.RawType,
 				Unique: !strings.Contains(column.Type, "[]"),
@@ -60,7 +60,6 @@ func Columns(tablesMap *types.TypeMap, table reflect.Type, typesMode bool) []typ
 				edge.LocalKey = "ID"
 				edge.TableKey = "ID"
 			} else {
-
 				edgeTableFieldsMap := &types.FieldMap{}
 				fields(edgeTableFieldsMap, edgeTable.Type())
 

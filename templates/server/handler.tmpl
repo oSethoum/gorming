@@ -136,7 +136,7 @@ func DeleteResource[T any](resource string) fiber.Handler {
 			return Error(c, err)
 		}
 		data := []T{}
-		db.DB.WithContext(c.UserContext()).Model(new(T)).Where(predicate, vars...).Find(data)
+		db.DB.WithContext(c.UserContext()).Model(new(T)).Where(predicate, vars...).Find(&data)
 		if len(data) == 0 {
 			return Error(c, errors.New("nothing to delete"))
 		}
