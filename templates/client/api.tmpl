@@ -23,7 +23,7 @@ export type ApiResponse<T> = {
    status: "success" | "error";
 };
 
-export type Request = <T>(url: string, init?: RequestInit & { query?: object }) => Promise<ApiResponse<T>>;
+export type Request = <T>(url: string, init?: RequestInit) => Promise<ApiResponse<T>>;
 
 export type Config = {
    debug?: boolean;
@@ -61,7 +61,6 @@ export const createRequest = (baseURL: string, config?: Config): Request => {
          if (config?.debug) {
             console.log({
                url,
-               query: init?.query,
                body: init?.body,
                response: jsonData,
             });
@@ -79,7 +78,6 @@ export const createRequest = (baseURL: string, config?: Config): Request => {
          if (config?.debug) {
             console.log({
                url,
-               query: init?.query,
                body: init?.body,
                response: json,
             });
