@@ -40,6 +40,7 @@ func New(config types.Config) types.Engine {
 		for _, v := range data.Config.Paths.TypescriptClient {
 			writeTemplate("client/api", path.Join(v, "api.ts"), data, types.FileTsApi)
 			writeTemplate("client/types", path.Join(v, "types.ts"), data, types.FileTsTypes)
+			writeTemplate("client/event", path.Join(v, "event.ts"), data, types.FileTsTypes)
 		}
 	}
 }
