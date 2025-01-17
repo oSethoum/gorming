@@ -97,6 +97,8 @@ func tags(f reflect.StructField) types.Tags {
 			if strings.Contains(value, "skipEdge") {
 				typescriptTag.SkipEdge = true
 			}
+
+			typescriptTag.Optional = strings.Contains(value, "optional")
 		}
 		tags.Typescript = typescriptTag
 	}

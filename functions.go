@@ -263,7 +263,7 @@ func templateFunctions(data *types.TemplateData) template.FuncMap {
 
 	tsOptionalCreateFunc := func(column types.Column) string {
 		if utils.In(column.Name, "ID", "CreatedAt", "UpdatedAt", "DeletedAt") ||
-			strings.HasPrefix(column.Type, "*") || strings.HasSuffix(column.Name, "ID") || column.Edge != nil ||
+			strings.HasPrefix(column.Type, "*") || strings.HasSuffix(column.Name, "ID") || column.Edge != nil || column.Tags.Typescript.Optional ||
 			len(column.Tags.Gorm.Default) > 0 {
 			return "?"
 		}
@@ -280,7 +280,7 @@ func templateFunctions(data *types.TemplateData) template.FuncMap {
 	}
 
 	tsOptionalFunc := func(column types.Column) string {
-		if utils.In(column.Name, "DeletedAt") || strings.HasPrefix(column.Type, "*") || column.Slice ||
+		if utils.In(column.Name, "DeletedAt") || strings.HasPrefix(column.Type, "*") || column.Slice || column.Tags.Typescript.Optional ||
 			len(column.Tags.Gorm.Default) > 0 {
 			return "?"
 		}
