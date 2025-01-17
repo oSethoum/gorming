@@ -133,8 +133,8 @@ type SwaggerTag struct {
 type TypescriptTag struct {
 	Type     string   `json:"type,omitempty"`
 	Enum     []string `json:"enum,omitempty"`
-	SkipEdge bool     `json:"skip_edge,omitempty"`
-	Optional bool     `json:"optional,omitempty"`
+	SkipEdge bool     `json:"skip_edge"`
+	Optional bool     `json:"optional"`
 }
 
 type GormingTag struct {
