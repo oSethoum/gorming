@@ -17,12 +17,16 @@ func (err ApiResponseError) Error() string {
 	return err.MainError.Error()
 }
 
-func (e *ApiResponseError) Parse() any {
-
+func (e *ApiResponseError) Parse() map[string]any {
 	errorMap := map[string]any{
-		"type":    "other",
-		"message": e.Error(),
+		"type": "other",
 	}
+
+	if e.MainError == nil {
+		return errorMap
+	}
+
+	errorMap["message"] = e.Error()
 
 	if e.Index >= 0 {
 		errorMap["index"] = e.Index

@@ -35,3 +35,27 @@ func Error(c *fiber.Ctx, err error, status ...int) error {
 
 	return c.Status(code).JSON(response)
 }
+
+func ErrorKey(c *fiber.Ctx, key string, err error, status ...int) error {
+	code := fiber.StatusBadRequest
+	if len(status) > 0 {
+		code = status[0]
+	}
+
+	response := fiber.Map{
+		"code":   code,
+		"status": "error",
+	}
+
+	errorMap := map[string]any{}
+
+	if apiResponseError, ok := err.(ApiResponseError); ok {
+		errorMap = apiResponseError.Parse()
+	} else {
+		errorMap = (&ApiResponseError{MainError: err, Index: -1}).Parse()
+	}
+	errorMap["key"] = key
+	response["error"] = errorMap
+
+	return c.Status(code).JSON(response)
+}
