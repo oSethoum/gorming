@@ -47,7 +47,7 @@ func ErrorKey(c *fiber.Ctx, key string, err error, status ...int) error {
 		"status": "error",
 	}
 
-	errorMap := map[string]any{}
+	var errorMap map[string]any
 
 	if apiResponseError, ok := err.(ApiResponseError); ok {
 		errorMap = apiResponseError.Parse()
