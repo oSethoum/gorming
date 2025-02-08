@@ -140,20 +140,6 @@ func templateFunctions(data *types.TemplateData) template.FuncMap {
 		return strings.Join(tablesString, ` | `)
 	}
 
-	dartCreateOptionalFunc := func(column types.Column) bool {
-		return utils.In(column.Name, "ID", "CreatedAt", "UpdatedAt", "DeletedAt") ||
-			strings.HasPrefix(column.Type, "*") || column.Edge != nil || strings.HasSuffix(column.Name, "ID") ||
-			len(column.Tags.Gorm.Default) > 0
-
-	}
-
-	dartCreateOptionalStringFunc := func(column types.Column) string {
-		if dartCreateOptionalFunc(column) {
-			return "?"
-		}
-		return ""
-	}
-
 	tsCreateOmitFunc := func(column types.Column) struct {
 		Field  string
 		Should bool
@@ -298,47 +284,6 @@ func templateFunctions(data *types.TemplateData) template.FuncMap {
 			len(column.Tags.Gorm.Default) > 0 || column.Edge != nil
 	}
 
-	dartTypeFunc := func(column types.Column, mode ...string) string {
-
-		t := column.RawType
-		typesMap := map[string]string{
-			"Time":   "DateTime",
-			"bool":   "bool",
-			"int":    "int",
-			"uint":   "int",
-			"float":  "double",
-			"string": "String",
-		}
-
-		for k, v := range typesMap {
-			if strings.HasPrefix(t, k) {
-				t = v
-			}
-		}
-
-		if strings.Contains(column.Type, "gorm.DeletedAt") {
-			t = "String"
-		}
-
-		if column.Edge != nil && len(mode) > 0 && mode[0] == "create" {
-			t += "CreateInput"
-		}
-
-		if column.Edge != nil && len(mode) > 0 && mode[0] == "update" {
-			t += "UpdateInput"
-		}
-
-		if strings.Contains(column.Type, "[]") {
-			t = fmt.Sprintf("List<%s>", t)
-		}
-
-		return t
-	}
-
-	dartNameFunc := func(column types.Column) string {
-		return utils.Camel(column.Name)
-	}
-
 	cleanRequiredEdgesFunc := func(columns []types.Column) []types.Column {
 		return columns
 	}
@@ -404,35 +349,47 @@ func templateFunctions(data *types.TemplateData) template.FuncMap {
 		return ""
 	}
 
+	setNullFieldTypeFunc := func(table types.Table) string {
+		nullableFields := []string{}
+		for _, v := range table.Columns {
+			if (v.Slice || strings.HasPrefix(v.Type, "*")) && v.Name != "SetNULL" {
+				nullableFields = append(nullableFields, tsNameFunc(v))
+			}
+		}
+
+		if len(nullableFields) > 0 {
+			return fmt.Sprintf(`Array<"%s">`, strings.Join(nullableFields, `" | "`))
+		}
+
+		return "null"
+	}
+
 	return template.FuncMap{
-		"plural":                   inflection.Plural,
-		"models":                   modelsFunc,
-		"tsName":                   tsNameFunc,
-		"tsNameString":             tsNameStringFunc,
-		"tableName":                tableNameFunc,
-		"tableNameString":          tableNameStringFunc,
-		"tsType":                   tsTypeFunc,
-		"columnOptional":           columnOptionalFunc,
-		"columnOptionalCreate":     columnOptionalCreateFunc,
-		"uniqueRelations":          uniqueRelationsFunc,
-		"tsOptionalCreate":         tsOptionalCreateFunc,
-		"tsNullableCreate":         tsNullableCreateFunc,
-		"tsOptionalKey":            tsOptionalKeyFunc,
-		"tsOptional":               tsOptionalFunc,
-		"tsCreateOmit":             tsCreateOmitFunc,
-		"dartType":                 dartTypeFunc,
-		"dartName":                 dartNameFunc,
-		"dartOptionalCreate":       dartCreateOptionalFunc,
-		"dartOptionalCreateString": dartCreateOptionalStringFunc,
-		"ignoreRoute":              ignoreRouteFunc,
-		"ignoreAllRoute":           ignoreAllRouteFunc,
-		"allowValidation":          allowValidationFunc,
-		"hasRegexValidation":       hasRegexValidationFunc,
-		"tableHasValidation":       tableHasValidationFunc,
-		"normalizeParam":           normalizeParamFunc,
-		"tsCreateIgnore":           tsCreateIgnoreFunc,
-		"cleanRequiredEdges":       cleanRequiredEdgesFunc,
-		"tsCreateUnion":            tsCreateUnionFunc,
-		"tablePascal":              tablePascalFunc,
+		"plural":               inflection.Plural,
+		"models":               modelsFunc,
+		"tsName":               tsNameFunc,
+		"tsNameString":         tsNameStringFunc,
+		"tableName":            tableNameFunc,
+		"tableNameString":      tableNameStringFunc,
+		"tsType":               tsTypeFunc,
+		"columnOptional":       columnOptionalFunc,
+		"columnOptionalCreate": columnOptionalCreateFunc,
+		"uniqueRelations":      uniqueRelationsFunc,
+		"tsOptionalCreate":     tsOptionalCreateFunc,
+		"tsNullableCreate":     tsNullableCreateFunc,
+		"tsOptionalKey":        tsOptionalKeyFunc,
+		"tsOptional":           tsOptionalFunc,
+		"tsCreateOmit":         tsCreateOmitFunc,
+		"ignoreRoute":          ignoreRouteFunc,
+		"ignoreAllRoute":       ignoreAllRouteFunc,
+		"allowValidation":      allowValidationFunc,
+		"hasRegexValidation":   hasRegexValidationFunc,
+		"tableHasValidation":   tableHasValidationFunc,
+		"normalizeParam":       normalizeParamFunc,
+		"tsCreateIgnore":       tsCreateIgnoreFunc,
+		"cleanRequiredEdges":   cleanRequiredEdgesFunc,
+		"tsCreateUnion":        tsCreateUnionFunc,
+		"tablePascal":          tablePascalFunc,
+		"setNullFieldType":     setNullFieldTypeFunc,
 	}
 }

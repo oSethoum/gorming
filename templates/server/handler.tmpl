@@ -19,7 +19,7 @@ func QueryResource[T any](resource string) fiber.Handler {
 		q := c.Query("query", "{}")
 		err := json.Unmarshal([]byte(q), query)
 		if err != nil {
-			return Error(c, err)
+			return ErrorKey(c, "error_parsing_query", err)
 		}
 
 		limit := query.Limit
@@ -35,7 +35,7 @@ func QueryResource[T any](resource string) fiber.Handler {
 
 		var count int64
 		if err := client.Model(new(T)).Count(&count).Error; err != nil {
-			return Error(c, err)
+			return ErrorKey(c, "error_querying_count", err)
 		}
 		if limit != nil {
 			client.Limit(*limit)
@@ -44,7 +44,7 @@ func QueryResource[T any](resource string) fiber.Handler {
 			client.Offset(*offset)
 		}
 		if err := client.Find(result).Error; err != nil {
-			return Error(c, err)
+			return ErrorKey(c, "error_querying_data", err)
 		}
 
 		data := fiber.Map{"count": count, "result": result}
@@ -58,10 +58,10 @@ func CreateResource[T any](resource string) fiber.Handler {
 		body := []T{}
 		err := c.BodyParser(&body)
 		if err != nil {
-			return Error(c, err)
+			return ErrorKey(c, "error_parsing_body", err)
 		}
 		if len(body) == 0 {
-			return Error(c, errors.New("empty body"))
+			return ErrorKey(c, "error_empty_body_array", nil)
 		}
 		err = db.DB.WithContext(c.UserContext()).Transaction(func(tx *gorm.DB) error {
 			for i, v := range body {
@@ -76,7 +76,7 @@ func CreateResource[T any](resource string) fiber.Handler {
 			return nil
 		})
 		if err != nil {
-			return Error(c, err)
+			return ErrorKey(c, "error_creating_resource", err)
 		}
 		go Broadcast(resource+":create", body)
 		return Success(c, body, fiber.StatusCreated)
@@ -88,36 +88,53 @@ func UpdateResource[T any](resource string) fiber.Handler {
 		body := []T{}
 		err := c.BodyParser(&body)
 		if err != nil {
-			return Error(c, err)
+			return ErrorKey(c, "error_parsing_body", err)
 		}
 		if len(body) == 0 {
-			return Error(c, errors.New("empty body"))
+			return ErrorKey(c, "error_empty_body_array", nil)
 		}
 		ids := []any{}
 		err = db.DB.WithContext(c.UserContext()).Transaction(func(tx *gorm.DB) error {
 			for i, v := range body {
-				ids = append(ids, reflect.ValueOf(v).FieldByName("ID").Interface())
+				id := reflect.ValueOf(v).FieldByName("ID").Interface()
+				if id == nil {
+					return ApiResponseError{MainError: errors.New("id is nil"), Index: i}
+				}
+				ids = append(ids, id)
 				if err := validator.Struct(v); err != nil {
 					return ApiResponseError{MainError: err, Index: i}
 				}
-				if err := tx.Updates(&v).Error; err != nil {
+				if err := tx.Where("id = ?", id).Updates(&v).Error; err != nil {
 					return ApiResponseError{MainError: err, Index: i}
 				}
+				setNULL, ok := reflect.ValueOf(v).FieldByName("SetNULL").Interface().([]string)
+				if setNULL == nil || !ok {
+					continue
+				} else {
+					nilMap := map[string]any{}
+					for _, v := range setNULL {
+						nilMap[v] = nil
+					}
+					if err := tx.Model(v).Where("id = ?", id).Updates(nilMap).Error; err != nil {
+						return ApiResponseError{MainError: err, Index: i}
+					}
+				}
+
 			}
 			return nil
 		})
 		if err != nil {
-			return Error(c, err)
+			return ErrorKey(c, "error_updating_resource", err)
 		}
 		data := []T{}
 		query := db.Query{Where: &db.Where{Field: &[3]any{"id", "in", ids}}}
 		client, err := query.P(db.DB.WithContext(c.UserContext()), resource)
 		if err != nil {
-			return Error(c, err)
+			return ErrorKey(c, "error_parsing_query", err)
 		}
 		err = client.Find(&data).Error
 		if err != nil {
-			return Error(c, err)
+			return ErrorKey(c, "error_querying_data", err)
 		}
 		go Broadcast(resource+"update", data)
 		return Success(c, data)
@@ -129,20 +146,20 @@ func DeleteResource[T any](resource string) fiber.Handler {
 		body := new(db.Where)
 		err := c.BodyParser(body)
 		if err != nil {
-			return Error(c, err)
+			return ErrorKey(c, "error_parsing_body", err)
 		}
 		predicate, vars, err := body.P()
 		if err != nil {
-			return Error(c, err)
+			return ErrorKey(c, "error_parsing_where_predicate", err)
 		}
 		data := []T{}
 		db.DB.WithContext(c.UserContext()).Model(new(T)).Where(predicate, vars...).Find(&data)
 		if len(data) == 0 {
-			return Error(c, errors.New("nothing to delete"))
+			return ErrorKey(c, "error_nothing_to_delete", nil)
 		}
 		err = db.DB.WithContext(c.UserContext()).Model(new(T)).Delete(predicate, vars...).Error
 		if err != nil {
-			return Error(c, err)
+			return ErrorKey(c, "error_deleting_resources", err)
 		}
 		go Broadcast(resource+":delete", data)
 		return Success(c, data)

@@ -56,9 +56,13 @@ export type {{ .Name }} = {
       {{- with .Edge }}
       {{ tsName $column }}?: {{ $column.RawType }}UpdateInput{{- if $column.Slice}}[]{{- end -}};
       {{- else }}
+      {{ if eq .Name "SetNULL" -}} 
+      {{ tsName $column }}?: {{ setNullFieldType $table }} | null;
+      {{ else -}}
       {{ tsName $column }}?: {{ tsType $column }} | null;
-      {{- end }}
-    {{- end }}
+      {{ end -}}
+      {{- end -}}
+    {{- end -}}
   };
 {{ end }}
 
