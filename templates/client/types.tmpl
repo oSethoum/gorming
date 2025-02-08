@@ -12,6 +12,7 @@ export type {{ .Name }} = {
 export type {{ .Name }} = {
     {{ range .Columns -}}
     {{ $column := . }}
+    {{ if eq .Name "SetNULL" -}} {{ continue }} {{ end -}}
     {{- if .Tags.Json.Ignore}}{{ continue }}{{ end -}}
     {{-  with .Edge -}}
     {{ tsName $column }}?: {{ tsType $column }};
@@ -39,7 +40,8 @@ export type {{ .Name }} = {
   export type {{ .Name }}CreateInput = {
     {{- range .Columns -}}
       {{- $column := . -}}
-      {{- if or ( .Tags.Json.Ignore ) ( tsCreateIgnore $table $column ) }}{{ continue }}{{end}}
+      {{- if or ( .Tags.Json.Ignore ) ( tsCreateIgnore $table $column ) }}{{ continue }}{{end -}}
+      {{ if eq .Name "SetNULL" -}} {{ continue }} {{ end -}}
       {{- with .Edge }}
       {{ tsName $column }}?: {{- $omit := tsCreateOmit $column -}} {{ $column.RawType }}CreateInput{{- if $column.Slice}}[]{{- end -}};
       {{- else }}

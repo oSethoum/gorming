@@ -352,7 +352,7 @@ func templateFunctions(data *types.TemplateData) template.FuncMap {
 	setNullFieldTypeFunc := func(table types.Table) string {
 		nullableFields := []string{}
 		for _, v := range table.Columns {
-			if (v.Slice || strings.HasPrefix(v.Type, "*")) && v.Name != "SetNULL" {
+			if (v.Slice || strings.HasPrefix(v.Type, "*") || v.RawType == "DeletedAt") && v.Name != "SetNULL" {
 				nullableFields = append(nullableFields, tsNameFunc(v))
 			}
 		}

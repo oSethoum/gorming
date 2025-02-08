@@ -4,6 +4,7 @@ export type ApiResponseError = {
    type: "validation" | "database" | "other";
    index?: number;
    message: string;
+   key?: string;
    validation?: Array<{
       field: string;
       tag: string;
@@ -90,11 +91,10 @@ export const createRequest = (baseURL: string, config?: Config): Request => {
 export const createApi = (baseURL: string, config?: Config) => {
    const request = createRequest(baseURL, config);
    return {
-      async query<T extends keyof TSchema>(resource: T, query?: TQuery<T>) {
-        let url = `/${resource}`;
-         if (query) {
-            url += `?query=${encodeURIComponent(JSON.stringify(query))}`;
-         }
+      async query<T extends keyof TSchema>(resource: T, query?: TQuery<T> & { unscoped?: boolean }) {
+         let url = `/${resource}${query ? `?query=${encodeURIComponent(JSON.stringify(query))}` : ""}${
+            query?.unscoped ? "&unscoped=true" : ""
+         }`;
          return request<{ result: Array<TSchema[T]["type"]>; count: number }>(url);
       },
 
@@ -108,8 +108,8 @@ export const createApi = (baseURL: string, config?: Config) => {
          });
       },
 
-      async update<T extends keyof TSchema>(resource: T, input: Array<TSchema[T]["update"]>) {
-         return request<Array<TSchema[T]["type"]>>(`/${resource}`, {
+      async update<T extends keyof TSchema>(resource: T, input: Array<TSchema[T]["update"]>, unscoped?: boolean) {
+         return request<Array<TSchema[T]["type"]>>(`/${resource}${unscoped ? "?unscoped=true" : ""}`, {
             method: "PATCH",
             headers: {
                "content-type": "application/json",
@@ -118,8 +118,8 @@ export const createApi = (baseURL: string, config?: Config) => {
          });
       },
 
-      async delete<T extends keyof TSchema>(resource: T, where: TQuery<T>["where"]) {
-         return request<Array<TSchema[T]["type"]>>(`/${resource}`, {
+      async delete<T extends keyof TSchema>(resource: T, where: TQuery<T>["where"] & { unscoped?: boolean }) {
+         return request<Array<TSchema[T]["type"]>>(`/${resource}${where.unscoped ? "?unscoped=true" : ""}`, {
             method: "DELETE",
             headers: {
                "content-type": "application/json",

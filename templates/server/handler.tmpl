@@ -15,6 +15,7 @@ func QueryResource[T any](resource string) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		result := new([]T)
 		query := new(db.Query)
+		unscoped := c.QueryBool("unscoped")
 
 		q := c.Query("query", "{}")
 		err := json.Unmarshal([]byte(q), query)
@@ -33,6 +34,10 @@ func QueryResource[T any](resource string) fiber.Handler {
 			return Error(c, err)
 		}
 
+		if unscoped {
+			client = client.Unscoped()
+		}
+
 		var count int64
 		if err := client.Model(new(T)).Count(&count).Error; err != nil {
 			return ErrorKey(c, "error_querying_count", err)
@@ -48,7 +53,6 @@ func QueryResource[T any](resource string) fiber.Handler {
 		}
 
 		data := fiber.Map{"count": count, "result": result}
-		go Broadcast(resource+":query", result)
 		return Success(c, data)
 	}
 }
@@ -78,7 +82,6 @@ func CreateResource[T any](resource string) fiber.Handler {
 		if err != nil {
 			return ErrorKey(c, "error_creating_resource", err)
 		}
-		go Broadcast(resource+":create", body)
 		return Success(c, body, fiber.StatusCreated)
 	}
 }
@@ -87,6 +90,7 @@ func UpdateResource[T any](resource string) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		body := []T{}
 		err := c.BodyParser(&body)
+		unscoped := c.QueryBool("unscoped")
 		if err != nil {
 			return ErrorKey(c, "error_parsing_body", err)
 		}
@@ -95,6 +99,9 @@ func UpdateResource[T any](resource string) fiber.Handler {
 		}
 		ids := []any{}
 		err = db.DB.WithContext(c.UserContext()).Transaction(func(tx *gorm.DB) error {
+			if unscoped {
+				tx = tx.Unscoped()
+			}
 			for i, v := range body {
 				id := reflect.ValueOf(v).FieldByName("ID").Interface()
 				if id == nil {
@@ -119,7 +126,6 @@ func UpdateResource[T any](resource string) fiber.Handler {
 						return ApiResponseError{MainError: err, Index: i}
 					}
 				}
-
 			}
 			return nil
 		})
@@ -136,15 +142,16 @@ func UpdateResource[T any](resource string) fiber.Handler {
 		if err != nil {
 			return ErrorKey(c, "error_querying_data", err)
 		}
-		go Broadcast(resource+"update", data)
 		return Success(c, data)
 	}
 }
+
 
 func DeleteResource[T any](resource string) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		body := new(db.Where)
 		err := c.BodyParser(body)
+		unscoped := c.QueryBool("unscoped")
 		if err != nil {
 			return ErrorKey(c, "error_parsing_body", err)
 		}
@@ -153,15 +160,23 @@ func DeleteResource[T any](resource string) fiber.Handler {
 			return ErrorKey(c, "error_parsing_where_predicate", err)
 		}
 		data := []T{}
-		db.DB.WithContext(c.UserContext()).Model(new(T)).Where(predicate, vars...).Find(&data)
+
+		client := db.DB.WithContext(c.UserContext()).Model(new(T))
+		if unscoped {
+			client = client.Unscoped()
+		}
+		client.Where(predicate, vars...).Find(&data)
 		if len(data) == 0 {
 			return ErrorKey(c, "error_nothing_to_delete", nil)
 		}
-		err = db.DB.WithContext(c.UserContext()).Model(new(T)).Delete(predicate, vars...).Error
+		client = db.DB.WithContext(c.UserContext()).Model(new(T))
+		if unscoped {
+			client = client.Unscoped()
+		}
+		err = client.Delete(predicate, vars...).Error
 		if err != nil {
 			return ErrorKey(c, "error_deleting_resources", err)
 		}
-		go Broadcast(resource+":delete", data)
 		return Success(c, data)
 	}
 }
