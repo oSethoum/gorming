@@ -43,7 +43,7 @@ export type {{ .Name }} = {
       {{- if or ( .Tags.Json.Ignore ) ( tsCreateIgnore $table $column ) }}{{ continue }}{{end -}}
       {{ if eq .Name "SetNULL" -}} {{ continue }} {{ end -}}
       {{- with .Edge }}
-      {{ tsName $column }}?: {{- $omit := tsCreateOmit $column -}} {{ $column.RawType }}CreateInput{{- if $column.Slice}}[]{{- end -}};
+      {{ tsName $column }}?: Omit<{{ $column.RawType }}CreateInput,"{{ tsNameString .TableKey}}">{{- if $column.Slice}}[]{{- end -}};
       {{- else }}
       {{ tsOptionalKey . }}
       {{ tsName $column }}{{- tsOptionalCreate $column  -}}: {{ tsType $column }}{{- tsNullableCreate $column  -}};

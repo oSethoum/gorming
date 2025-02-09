@@ -59,17 +59,6 @@ func tags(f reflect.StructField) types.Tags {
 		tags.Gorm = gormTag
 	}
 
-	dartTagString := strings.TrimSpace(f.Tag.Get("dart"))
-	if len(dartTagString) > 0 {
-		dartTag := types.DartTag{}
-		for _, value := range strings.Split(dartTagString, ";") {
-			if strings.HasPrefix(value, "type=") {
-				dartTag.Type = strings.TrimPrefix(value, "type=")
-			}
-		}
-		tags.Dart = dartTag
-	}
-
 	swaggerTagString := strings.TrimSpace(f.Tag.Get("swagger"))
 	if len(swaggerTagString) > 0 {
 		swaggerTag := types.SwaggerTag{}

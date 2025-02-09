@@ -101,7 +101,6 @@ type Tags struct {
 	Typescript TypescriptTag  `json:"typescript,omitempty"`
 	Validator  []ValidatorTag `json:"validator,omitempty"`
 	Swagger    SwaggerTag     `json:"swagger,omitempty"`
-	Dart       DartTag        `json:"dart,omitempty"`
 	IgnoreEdge bool           `json:"ignore_edge,omitempty"`
 }
 
@@ -119,10 +118,6 @@ type GormTag struct {
 	References string `json:"reference,omitempty"`
 	Ignore     bool   `json:"ignore,omitempty"`
 	Many2Many  string `json:"many2many,omitempty"`
-}
-
-type DartTag struct {
-	Type string `json:"type,omitempty"`
 }
 
 type SwaggerTag struct {
