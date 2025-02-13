@@ -1,8 +1,8 @@
 package db
 
 import (
-	{{ if eq .Config.DBKind "sqlite" }}
 	"fmt"
+	{{ if eq .Config.DBKind "sqlite" }}
 	"github.com/oSethoum/sqlite"
 	{{ end }}
 	{{ if eq .Config.DBKind "mysql" }}
@@ -26,11 +26,11 @@ func Init() error {
 	{{ end }}
 
 	{{ if eq .Config.DBKind "mysql" }}
-	dsn := fmt.Sprintf("%s:%s@tcp(127.0.0.1:3306)/%s?charset=utf8mb4&parseTime=True&loc=Local", "user", "password, "db")
+	dsn := fmt.Sprintf("%s:%s@tcp(127.0.0.1:3306)/%s?charset=utf8mb4&parseTime=True&loc=Local", "user", "password", "db")
 	dialect := mysql.Open(dsn)
 	{{ end }}
 	{{ if eq .Config.DBKind "postgres" }}
-	dsn := fmt.Sprintf("host=localhost user=%s password=%s dbname=%s port=5432 sslmode=disable", "user", "password, "db")
+	dsn := fmt.Sprintf("host=localhost user=%s password=%s dbname=%s port=5432 sslmode=disable", "user", "password", "db")
 	dialect := postgres.Open(dsn)
 	{{ end }}
 	client, err := gorm.Open(dialect, &gorm.Config{

@@ -86,14 +86,64 @@ func CreateResource[T any](resource string) fiber.Handler {
 	}
 }
 
+func SaveResource[T any](resource string) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		body := []T{}
+		err := c.BodyParser(&body)
+		if err != nil {
+			return ErrorKey(c, "error_parsing_body", err)
+		}
+
+		unscoped := c.QueryBool("unscoped")
+		if len(body) == 0 {
+			return ErrorKey(c, "error_empty_body_array", nil)
+		}
+		ids := []any{}
+		err = db.DB.WithContext(c.UserContext()).Transaction(func(tx *gorm.DB) error {
+			if unscoped {
+				tx = tx.Unscoped()
+			}
+			for i, v := range body {
+				id := reflect.ValueOf(v).FieldByName("ID").Interface()
+				if id == nil {
+					return ApiResponseError{MainError: errors.New("id is nil"), Index: i}
+				}
+
+				if err := validator.Struct(v); err != nil {
+					return ApiResponseError{MainError: err, Index: i}
+				}
+				if err := tx.Save(&v).Error; err != nil {
+					return ApiResponseError{MainError: err, Index: i}
+				}
+
+			}
+			return nil
+		})
+		if err != nil {
+			return ErrorKey(c, "error_saving_resource", err)
+		}
+		data := []T{}
+		query := db.Query{Where: &db.Where{Field: &[3]any{"id", "in", ids}}}
+		client, err := query.P(db.DB.WithContext(c.UserContext()), resource)
+		if err != nil {
+			return ErrorKey(c, "error_parsing_query", err)
+		}
+		err = client.Find(&data).Error
+		if err != nil {
+			return ErrorKey(c, "error_querying_data", err)
+		}
+		return Success(c, data)
+	}
+}
+
 func UpdateResource[T any](resource string) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		body := []T{}
 		err := c.BodyParser(&body)
-		unscoped := c.QueryBool("unscoped")
 		if err != nil {
 			return ErrorKey(c, "error_parsing_body", err)
 		}
+		unscoped := c.QueryBool("unscoped")
 		if len(body) == 0 {
 			return ErrorKey(c, "error_empty_body_array", nil)
 		}
@@ -111,20 +161,8 @@ func UpdateResource[T any](resource string) fiber.Handler {
 				if err := validator.Struct(v); err != nil {
 					return ApiResponseError{MainError: err, Index: i}
 				}
-				if err := tx.Where("id = ?", id).Updates(&v).Error; err != nil {
+				if err := tx.Where("id = ?", id).Save(&v).Error; err != nil {
 					return ApiResponseError{MainError: err, Index: i}
-				}
-				setNULL, ok := reflect.ValueOf(v).FieldByName("SetNULL").Interface().([]string)
-				if setNULL == nil || !ok {
-					continue
-				} else {
-					nilMap := map[string]any{}
-					for _, v := range setNULL {
-						nilMap[v] = nil
-					}
-					if err := tx.Model(v).Where("id = ?", id).Updates(nilMap).Error; err != nil {
-						return ApiResponseError{MainError: err, Index: i}
-					}
 				}
 			}
 			return nil
@@ -145,7 +183,6 @@ func UpdateResource[T any](resource string) fiber.Handler {
 		return Success(c, data)
 	}
 }
-
 
 func DeleteResource[T any](resource string) fiber.Handler {
 	return func(c *fiber.Ctx) error {

@@ -1,4 +1,4 @@
-// this query file for sqlite and postgres
+// this query file is for mysql and mariadb to adapt it to ` instead of "
 
 package db
 
@@ -118,7 +118,7 @@ func (q *Query) P(client *gorm.DB, table string) (*gorm.DB, error) {
 			if !isField(order[0]) {
 				return nil, fmt.Errorf("order: field %s is not alphanumeric", order[0])
 			}
-			order[0] = `"` + prefix + table + `"."` + order[0] + `"`
+			order[0] = `"` + prefix + table + "`.`" + order[0] + `"`
 
 			if order[1] == "" {
 				order[1] = "ASC"
@@ -143,26 +143,26 @@ func (w *With) P(count uint, prefix, table string, relation []string) (string, s
 
 	if len(relation) == 3 {
 		join = fmt.Sprintf(
-			`INNER JOIN "%s" as "%s" ON "%s" = "%s"`,
+			"INNER JOIN `%s` as `%s` ON `%s` = `%s`",
 			prefix+relation[0],
 			newPrefix,
-			prefix+table+`"."`+relation[1],
-			newPrefix+`"."`+relation[2],
+			prefix+table+"`.`"+relation[1],
+			newPrefix+"`.`"+relation[2],
 		)
 	}
 
 	if len(relation) == 6 {
 		midPrefix := fmt.Sprintf("%s_%d", prefix+relation[3], count)
 		join = fmt.Sprintf(
-			`INNER JOIN "%s" as "%s" ON "%s" = "%s" INNER JOIN "%s" as "%s" ON "%s" = "%s"`,
+			"INNER JOIN `%s` as `%s` ON `%s` = `%s` INNER JOIN `%s` as `%s` ON `%s` = `%s`",
 			prefix+relation[3],
 			midPrefix,
-			prefix+table+`"."`+relation[1],
-			midPrefix+`"."`+relation[4],
+			prefix+table+"`.`"+relation[1],
+			midPrefix+"`.`"+relation[4],
 			prefix+relation[0],
 			newPrefix,
-			newPrefix+`"."`+relation[1],
-			midPrefix+`"."`+relation[5],
+			newPrefix+"`.`"+relation[1],
+			midPrefix+"`.`"+relation[5],
 		)
 	}
 
@@ -267,44 +267,44 @@ func (w *Where) P(prefixes ...string) (string, []any, error) {
 		if !isField(field) {
 			return "", nil, fmt.Errorf("where: %+v has to be a valid field", field)
 		}
-		field = strings.ReplaceAll(prefix+field, `.`, `"."`)
+		field = strings.ReplaceAll(prefix+field, `.`, "`.`")
 
 		switch fmt.Sprintf("%v", w.Field[1]) {
 
 		case "like":
-			fieldQuery = fmt.Sprintf(`"%s" LIKE (?)`, field)
+			fieldQuery = fmt.Sprintf("`%s` LIKE (?)", field)
 			variables = append(variables, w.Field[2])
 		case "null":
-			fieldQuery = fmt.Sprintf(`"%s" IS NULL`, field)
+			fieldQuery = fmt.Sprintf("`%s` IS NULL", field)
 		case "not null":
-			fieldQuery = fmt.Sprintf(`"%s" IS NOT NULL`, field)
+			fieldQuery = fmt.Sprintf("`%s` IS NOT NULL", field)
 		case "between":
-			fieldQuery = fmt.Sprintf(`"%s" BETWEEN ? AND ?`, field)
+			fieldQuery = fmt.Sprintf("`%s` BETWEEN ? AND ?", field)
 			value := w.Field[0].([]any)
 			variables = append(variables, value[:]...)
 		case "in":
-			fieldQuery = fmt.Sprintf(`"%s" IN (?)`, field)
+			fieldQuery = fmt.Sprintf("`%s` IN (?)", field)
 			variables = append(variables, w.Field[2])
 		case "not in":
-			fieldQuery = fmt.Sprintf(`"%s" NOT IN (?)`, field)
+			fieldQuery = fmt.Sprintf("`%s` NOT IN (?)", field)
 			variables = append(variables, w.Field[2])
 		case "=":
-			fieldQuery = fmt.Sprintf(`"%s" = ?`, field)
+			fieldQuery = fmt.Sprintf("`%s` = ?", field)
 			variables = append(variables, w.Field[2])
 		case "<>":
-			fieldQuery = fmt.Sprintf(`"%s" <> ?`, field)
+			fieldQuery = fmt.Sprintf("`%s` <> ?", field)
 			variables = append(variables, w.Field[2])
 		case ">":
-			fieldQuery = fmt.Sprintf(`"%s" > ?`, field)
+			fieldQuery = fmt.Sprintf("`%s` > ?", field)
 			variables = append(variables, w.Field[2])
 		case ">=":
-			fieldQuery = fmt.Sprintf(`"%s" >= ?`, field)
+			fieldQuery = fmt.Sprintf("`%s` >= ?", field)
 			variables = append(variables, w.Field[2])
 		case "<":
-			fieldQuery = fmt.Sprintf(`"%s" < ?`, field)
+			fieldQuery = fmt.Sprintf("`%s` < ?", field)
 			variables = append(variables, w.Field[2])
 		case "<=":
-			fieldQuery = fmt.Sprintf(`"%s" <= ?`, field)
+			fieldQuery = fmt.Sprintf("`%s` <= ?", field)
 			variables = append(variables, w.Field[2])
 		default:
 			return "", nil, fmt.Errorf("where: %+v invalid predicate", w.Field[1])

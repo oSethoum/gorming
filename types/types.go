@@ -27,6 +27,7 @@ const (
 	FileSchema
 	FileTsApi
 	FileTsTypes
+	FileTsEvent
 )
 
 const (

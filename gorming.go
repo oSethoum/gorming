@@ -28,7 +28,11 @@ func New(config types.Config) types.Engine {
 
 		writeTemplate("common/db", filepath.Join(config.Paths.BackendPath, "db/db.go"), data, types.FileDB)
 		writeTemplate("common/migration", filepath.Join(config.Paths.BackendPath, "db/migration.go"), data, types.FileMigration)
-		writeTemplate("common/query", filepath.Join(config.Paths.BackendPath, "db/query.go"), data, types.FileQuery)
+		if config.DBKind == types.MySQL {
+			writeTemplate("common/m_query", filepath.Join(config.Paths.BackendPath, "db/query.go"), data, types.FileQuery)
+		} else {
+			writeTemplate("common/query", filepath.Join(config.Paths.BackendPath, "db/query.go"), data, types.FileQuery)
+		}
 		writeTemplate("common/schema", filepath.Join(config.Paths.BackendPath, "db/schema.go"), data, types.FileSchema)
 		writeTemplate("common/privacy", filepath.Join(config.Paths.BackendPath, "db/privacy.go"), data, types.FilePrivacy)
 		writeTemplate("common/utils", filepath.Join(config.Paths.BackendPath, "utils/utils.go"), data, types.FileUtils)
@@ -40,7 +44,7 @@ func New(config types.Config) types.Engine {
 		for _, v := range data.Config.Paths.TypescriptClient {
 			writeTemplate("client/api", path.Join(v, "api.ts"), data, types.FileTsApi)
 			writeTemplate("client/types", path.Join(v, "types.ts"), data, types.FileTsTypes)
-			writeTemplate("client/event", path.Join(v, "event.ts"), data, types.FileTsTypes)
+			writeTemplate("client/event", path.Join(v, "event.ts"), data, types.FileTsEvent)
 		}
 	}
 }
