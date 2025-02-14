@@ -14,8 +14,7 @@ import (
 func QueryResource[T any](resource string) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		result := new([]T)
-		query := new(db.Query)
-		unscoped := c.QueryBool("unscoped")
+		query := new(db.Query) 
 
 		q := c.Query("query", "{}")
 		err := json.Unmarshal([]byte(q), query)
@@ -34,7 +33,7 @@ func QueryResource[T any](resource string) fiber.Handler {
 			return Error(c, err)
 		}
 
-		if unscoped {
+		if c.QueryBool("unscoped") {
 			client = client.Unscoped()
 		}
 
@@ -94,13 +93,12 @@ func SaveResource[T any](resource string) fiber.Handler {
 			return ErrorKey(c, "error_parsing_body", err)
 		}
 
-		unscoped := c.QueryBool("unscoped")
 		if len(body) == 0 {
 			return ErrorKey(c, "error_empty_body_array", nil)
 		}
 		ids := []any{}
 		err = db.DB.WithContext(c.UserContext()).Transaction(func(tx *gorm.DB) error {
-			if unscoped {
+			if c.QueryBool("unscoped") {
 				tx = tx.Unscoped()
 			}
 			for i, v := range body {
@@ -143,13 +141,12 @@ func UpdateResource[T any](resource string) fiber.Handler {
 		if err != nil {
 			return ErrorKey(c, "error_parsing_body", err)
 		}
-		unscoped := c.QueryBool("unscoped")
 		if len(body) == 0 {
 			return ErrorKey(c, "error_empty_body_array", nil)
 		}
 		ids := []any{}
 		err = db.DB.WithContext(c.UserContext()).Transaction(func(tx *gorm.DB) error {
-			if unscoped {
+			if c.QueryBool("unscoped") {
 				tx = tx.Unscoped()
 			}
 			for i, v := range body {
@@ -161,7 +158,7 @@ func UpdateResource[T any](resource string) fiber.Handler {
 				if err := validator.Struct(v); err != nil {
 					return ApiResponseError{MainError: err, Index: i}
 				}
-				if err := tx.Where("id = ?", id).Save(&v).Error; err != nil {
+				if err := tx.Where("id = ?", id).Updates(&v).Error; err != nil {
 					return ApiResponseError{MainError: err, Index: i}
 				}
 			}

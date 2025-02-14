@@ -11,6 +11,4 @@ type Model struct {
 	CreatedAt time.Time      `json:"created_at,omitempty"`
 	UpdatedAt time.Time      `json:"updated_at,omitempty"`
 	DeletedAt gorm.DeletedAt `json:"deleted_at,omitempty" gorm:"index"`
-	// this field will be used for updating columns to a NULL value
-	SetNULL   []string       `json:"set_null,omitempty" gorm:"-:all"`
 }
