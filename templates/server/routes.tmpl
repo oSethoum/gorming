@@ -19,7 +19,7 @@ func routes(r fiber.Router) {
 			{{ $t }}.Post("/", handlers.CreateResource[db.{{ .Name }}]("{{ $t }}"))
 			{{ end -}}
 			{{ if ignoreRoute $t "save" | not -}} 
-			{{ $t }}.Put("/", handlers.UpdateResource[db.{{ .Name }}]("{{ $t }}"))
+			{{ $t }}.Put("/", handlers.SaveResource[db.{{ .Name }}]("{{ $t }}"))
 			{{ end -}}
 			{{ if ignoreRoute $t "update" | not -}} 
 			{{ $t }}.Patch("/", handlers.UpdateResource[db.{{ .Name }}]("{{ $t }}"))
