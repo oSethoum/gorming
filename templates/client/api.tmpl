@@ -110,7 +110,7 @@ export const createApi = (baseURL: string, config?: Config) => {
 
       async save<T extends keyof TSchema>(resource: T, input: Array<TSchema[T]["update"]>, unscoped?: boolean) {
          return request<Array<TSchema[T]["type"]>>(`/${resource}${unscoped ? "?unscoped=true" : ""}`, {
-            method: "PATCH",
+            method: "PUT",
             headers: {
                "content-type": "application/json",
             },
@@ -120,7 +120,7 @@ export const createApi = (baseURL: string, config?: Config) => {
 
       async update<T extends keyof TSchema>(resource: T, input: Array<TSchema[T]["update"]>, unscoped?: boolean) {
          return request<Array<TSchema[T]["type"]>>(`/${resource}${unscoped ? "?unscoped=true" : ""}`, {
-            method: "PUT",
+            method: "PATCH",
             headers: {
                "content-type": "application/json",
             },
