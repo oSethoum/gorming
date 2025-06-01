@@ -1,5 +1,3 @@
-I apologize for the inconvenience. Here is the raw text without markdown rendering:
-
 # Gorming
 
 Gorming is a powerful code generation tool designed to streamline the process of generating query and TypeScript clients, Go Fiber handlers, and Swagger documentation. It simplifies the development workflow by automating repetitive tasks and ensuring consistency across your project.
