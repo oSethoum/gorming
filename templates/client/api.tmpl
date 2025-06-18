@@ -1,141 +1,177 @@
-import { TSchema, TQuery } from "./types";
+import type { TSchema, TQuery } from "./types";
 
 export type ApiResponseError = {
-   type: "validation" | "database" | "other";
-   index?: number;
-   message: string;
-   key?: string;
-   validation?: Array<{
-      field: string;
-      tag: string;
-      param?: string;
-      value: string;
-   }>;
-   database?: {
-      field?: string;
-      constraint?: string;
-   };
+  type: "validation" | "database" | "other";
+  index?: number;
+  message: string;
+  key?: string;
+  validation?: Array<{
+    field: string;
+    tag: string;
+    param?: string;
+    value: string;
+  }>;
+  database?: {
+    field?: string;
+    constraint?: string;
+  };
 };
 
 export type ApiResponse<T> = {
-   code: number;
-   data?: T;
-   error?: ApiResponseError;
-   status: "success" | "error";
+  code: number;
+  data?: T;
+  error?: ApiResponseError;
+  status: "success" | "error";
 };
 
-export type Request = <T>(url: string, init?: RequestInit) => Promise<ApiResponse<T>>;
+export type Request = <T>(
+  url: string,
+  init?: RequestInit
+) => Promise<ApiResponse<T>>;
 
 export type Config = {
-   debug?: boolean;
-   headers?: { [key in string]: (() => string) | string };
+  debug?: boolean;
+  headers?: { [key in string]: (() => string) | string };
 };
 
 export const createRequest = (baseURL: string, config?: Config): Request => {
-   return async <T>(url: string, init?: RequestInit): Promise<ApiResponse<T>> => {
-      const method = init?.method || "GET";
+  return async <T>(
+    url: string,
+    init?: RequestInit
+  ): Promise<ApiResponse<T>> => {
+    const method = init?.method || "GET";
 
-      const headers = {
-         ...init?.headers,
+    const headers: Record<string, any> = {
+      ...init?.headers,
+    };
+
+    if (config?.headers) {
+      for (const [key, value] of Object.entries(config?.headers)) {
+        if (typeof value == "function") {
+          headers[key] = value();
+        } else {
+          headers[key] = value;
+        }
+      }
+    }
+
+    let response = await fetch(`${baseURL}${url}`, {
+      method,
+      ...init,
+      headers,
+      credentials: "include",
+    });
+
+    const contentType = response.headers.get("content-type");
+    if (contentType == "application/json") {
+      const jsonData = await response.json();
+      if (config?.debug) {
+        console.log({
+          url,
+          body: init?.body,
+          response: jsonData,
+        });
+      }
+      return jsonData;
+    } else {
+      const json: ApiResponse<T> = {
+        code: 400,
+        status: "error",
+        error: {
+          type: "other",
+          message: await response.text(),
+        },
       };
-
-      if (config?.headers) {
-         for (const [key, value] of Object.entries(config?.headers)) {
-            if (typeof value == "function") {
-               headers[key] = value();
-            } else {
-               headers[key] = value;
-            }
-         }
+      if (config?.debug) {
+        console.log({
+          url,
+          body: init?.body,
+          response: json,
+        });
       }
-
-      let response = await fetch(`${baseURL}${url}`, {
-         method,
-         ...init,
-         headers,
-         credentials: "include",
-      });
-
-      const contentType = response.headers.get("content-type");
-      if (contentType == "application/json") {
-         const jsonData = await response.json();
-         if (config?.debug) {
-            console.log({
-               url,
-               body: init?.body,
-               response: jsonData,
-            });
-         }
-         return jsonData;
-      } else {
-         const json: ApiResponse<T> = {
-            code: 400,
-            status: "error",
-            error: {
-               type: "other",
-               message: await response.text(),
-            },
-         };
-         if (config?.debug) {
-            console.log({
-               url,
-               body: init?.body,
-               response: json,
-            });
-         }
-         return json;
-      }
-   };
+      return json;
+    }
+  };
 };
 
 export const createApi = (baseURL: string, config?: Config) => {
-   const request = createRequest(baseURL, config);
-   return {
-      async query<T extends keyof TSchema>(resource: T, query?: TQuery<T> & { unscoped?: boolean }) {
-         let url = `/${resource}${query ? `?query=${encodeURIComponent(JSON.stringify(query))}` : ""}${
-            query?.unscoped ? "&unscoped=true" : ""
-         }`;
-         return request<{ result: Array<TSchema[T]["type"]>; count: number }>(url);
-      },
+  const request = createRequest(baseURL, config);
+  return {
+    async query<T extends keyof TSchema>(
+      resource: T,
+      query?: TQuery<T> & { unscoped?: boolean }
+    ) {
+      let url = `/${resource}${
+        query ? `?query=${encodeURIComponent(JSON.stringify(query))}` : ""
+      }${query?.unscoped ? "&unscoped=true" : ""}`;
+      return request<
+        {
+          [K in T]: Array<TSchema[K]["type"]>;
+        } & { count: number }
+      >(url);
+    },
 
-      async create<T extends keyof TSchema>(resource: T, input: Array<TSchema[T]["create"]>) {
-         return request<Array<TSchema[T]["type"]>>(`/${resource}`, {
-            method: "POST",
-            headers: {
-               "content-type": "application/json",
-            },
-            body: JSON.stringify(input),
-         });
-      },
+    async create<T extends keyof TSchema>(
+      resource: T,
+      input: Array<TSchema[T]["create"]>
+    ) {
+      return request<Array<TSchema[T]["type"]>>(`/${resource}`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify(input),
+      });
+    },
 
-      async save<T extends keyof TSchema>(resource: T, input: Array<TSchema[T]["update"]>, unscoped?: boolean) {
-         return request<Array<TSchema[T]["type"]>>(`/${resource}${unscoped ? "?unscoped=true" : ""}`, {
-            method: "PUT",
-            headers: {
-               "content-type": "application/json",
-            },
-            body: JSON.stringify(input),
-         });
-      },
+    async save<T extends keyof TSchema>(
+      resource: T,
+      input: Array<TSchema[T]["update"]>,
+      unscoped?: boolean
+    ) {
+      return request<Array<TSchema[T]["type"]>>(
+        `/${resource}${unscoped ? "?unscoped=true" : ""}`,
+        {
+          method: "PUT",
+          headers: {
+            "content-type": "application/json",
+          },
+          body: JSON.stringify(input),
+        }
+      );
+    },
 
-      async update<T extends keyof TSchema>(resource: T, input: Array<TSchema[T]["update"]>, unscoped?: boolean) {
-         return request<Array<TSchema[T]["type"]>>(`/${resource}${unscoped ? "?unscoped=true" : ""}`, {
-            method: "PATCH",
-            headers: {
-               "content-type": "application/json",
-            },
-            body: JSON.stringify(input),
-         });
-      },
+    async update<T extends keyof TSchema>(
+      resource: T,
+      input: Array<TSchema[T]["update"]>,
+      unscoped?: boolean
+    ) {
+      return request<Array<TSchema[T]["type"]>>(
+        `/${resource}${unscoped ? "?unscoped=true" : ""}`,
+        {
+          method: "PATCH",
+          headers: {
+            "content-type": "application/json",
+          },
+          body: JSON.stringify(input),
+        }
+      );
+    },
 
-      async delete<T extends keyof TSchema>(resource: T, where: TQuery<T>["where"] & { unscoped?: boolean }) {
-         return request<Array<TSchema[T]["type"]>>(`/${resource}${where.unscoped ? "?unscoped=true" : ""}`, {
-            method: "DELETE",
-            headers: {
-               "content-type": "application/json",
-            },
-            body: JSON.stringify(where),
-         });
-      },
-   };
+    async delete<T extends keyof TSchema>(
+      resource: T,
+      where: TQuery<T>["where"] & { unscoped?: boolean }
+    ) {
+      return request<Array<TSchema[T]["type"]>>(
+        `/${resource}${where.unscoped ? "?unscoped=true" : ""}`,
+        {
+          method: "DELETE",
+          headers: {
+            "content-type": "application/json",
+          },
+          body: JSON.stringify(where),
+        }
+      );
+    },
+  };
 };

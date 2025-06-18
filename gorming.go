@@ -2,7 +2,6 @@ package gorming
 
 import (
 	"embed"
-	"path"
 	"path/filepath"
 
 	"github.com/oSethoum/gorming/parser"
@@ -41,10 +40,11 @@ func New(config types.Config) types.Engine {
 		writeTemplate("server/response", filepath.Join(config.Paths.BackendPath, "handlers/response.go"), data, types.FileResponse)
 		writeTemplate("server/ws", filepath.Join(config.Paths.BackendPath, "handlers/ws.go"), data, types.FileWs)
 		writeTemplate("server/routes", filepath.Join(config.Paths.BackendPath, "routes/routes.go"), data, types.FileRoutes)
+
 		for _, v := range data.Config.Paths.TypescriptClient {
-			writeTemplate("client/api", path.Join(v, "api.ts"), data, types.FileTsApi)
-			writeTemplate("client/types", path.Join(v, "types.ts"), data, types.FileTsTypes)
-			writeTemplate("client/event", path.Join(v, "event.ts"), data, types.FileTsEvent)
+			writeTemplate("client/api", filepath.Join(v, "api.ts"), data, types.FileTsApi)
+			writeTemplate("client/types", filepath.Join(v, "types.ts"), data, types.FileTsTypes)
+			writeTemplate("client/event", filepath.Join(v, "event.ts"), data, types.FileTsEvent)
 		}
 	}
 }

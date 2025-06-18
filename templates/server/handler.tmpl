@@ -7,9 +7,11 @@ import (
 	"reflect"
 
 	"github.com/gofiber/fiber/v2"
-	"github.com/oSethoum/validator"
+	"github.com/go-playground/validator/v10"
 	"gorm.io/gorm"
 )
+
+var validate = validator.New()
 
 func QueryResource[T any](resource string) fiber.Handler {
 	return func(c *fiber.Ctx) error {
@@ -68,7 +70,7 @@ func CreateResource[T any](resource string) fiber.Handler {
 		}
 		err = db.DB.WithContext(c.UserContext()).Transaction(func(tx *gorm.DB) error {
 			for i, v := range body {
-				if err := validator.Struct(v); err != nil {
+				if err := validate.Struct(v); err != nil {
 					return ApiResponseError{MainError: err, Index: i}
 				}
 				if err := tx.Create(&v).Error; err != nil {
@@ -107,7 +109,7 @@ func SaveResource[T any](resource string) fiber.Handler {
 					return ApiResponseError{MainError: errors.New("id is nil"), Index: i}
 				}
 
-				if err := validator.Struct(v); err != nil {
+				if err := validate.Struct(v); err != nil {
 					return ApiResponseError{MainError: err, Index: i}
 				}
 				if err := tx.Save(&v).Error; err != nil {
@@ -155,7 +157,7 @@ func UpdateResource[T any](resource string) fiber.Handler {
 					return ApiResponseError{MainError: errors.New("id is nil"), Index: i}
 				}
 				ids = append(ids, id)
-				if err := validator.Struct(v); err != nil {
+				if err := validate.Struct(v); err != nil {
 					return ApiResponseError{MainError: err, Index: i}
 				}
 				if err := tx.Where("id = ?", id).Updates(&v).Error; err != nil {
