@@ -20,6 +20,7 @@ func Tables(tablesMap *types.TypeMap, typesMode bool) []types.Table {
 			Name:    name,
 			Columns: Columns(tablesMap, table.Type(), typesMode),
 		}
+
 		if ok {
 			newTable.Table = method.Call(nil)[0].String()
 		}

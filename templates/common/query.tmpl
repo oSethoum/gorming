@@ -40,6 +40,8 @@ func (q *Query) P(client *gorm.DB, table string) (*gorm.DB, error) {
 		return nil, errors.New("query: gorm client is nil")
 	}
 
+	queryHook(client, q, table)
+
 	var count uint
 
 	if len(q.Preloads) > 0 {

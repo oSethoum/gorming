@@ -27,7 +27,14 @@ func Init() error {
 
 	{{ if eq .Config.DBKind "mysql" }}
 	dsn := fmt.Sprintf("%s:%s@tcp(127.0.0.1:3306)/%s?charset=utf8mb4&parseTime=True&loc=Local", "user", "password", "db")
-	dialect := mysql.Open(dsn)
+	dialect := mysql.New(mysql.Config{
+		DSN:                       dsn,
+		DefaultStringSize:         256,
+		DisableDatetimePrecision:  true,
+		DontSupportRenameIndex:    true,
+		DontSupportRenameColumn:   true,
+		SkipInitializeWithVersion: false,
+	})
 	{{ end }}
 	{{ if eq .Config.DBKind "postgres" }}
 	dsn := fmt.Sprintf("host=localhost user=%s password=%s dbname=%s port=5432 sslmode=disable", "user", "password", "db")
@@ -35,8 +42,11 @@ func Init() error {
 	{{ end }}
 	client, err := gorm.Open(dialect, &gorm.Config{
 		PrepareStmt:                              true,
-		{{ if .Config.Debug }}
+		{{ if .Config.Debug -}}
 		Logger:                                   logger.Default.LogMode(logger.Info),
+		{{ end -}}
+		{{ if eq .Config.DBKind "mysql" }}
+		DisableForeignKeyConstraintWhenMigrating: true,
 		{{ end -}}
 	})
 

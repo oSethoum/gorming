@@ -290,9 +290,8 @@ func templateFunctions(data *types.TemplateData) template.FuncMap {
 
 	_getRequiredEdges := func(columns []types.Column) [][2]types.Column {
 		out := [][2]types.Column{}
-
 		for _, v := range columns {
-			if v.Edge != nil && v.Edge.Unique {
+			if v.Edge != nil && v.Edge.Unique && v.Edge.LocalKey != "ID" {
 				localKeyColumn, ok := lo.Find(columns, func(c types.Column) bool {
 					return c.Edge == nil && c.Name == v.Edge.LocalKey && !strings.HasPrefix(c.Type, "*")
 				})
@@ -303,6 +302,38 @@ func templateFunctions(data *types.TemplateData) template.FuncMap {
 		}
 
 		return out
+	}
+
+	getTableFKConstraintsFunc := func(table types.Table) string {
+		ss := ""
+		edges := _getRequiredEdges(table.Columns)
+
+		for _, v := range edges {
+			u := ""
+
+			if v[0].Tags.Gorm.OnUpdate != "" {
+				u += fmt.Sprintf(`ON UPDATE %s `, v[0].Tags.Gorm.OnUpdate)
+			}
+
+			if v[0].Tags.Gorm.OnDelete != "" {
+				u += fmt.Sprintf(`ON DELETE %s`, v[0].Tags.Gorm.OnDelete)
+			}
+
+			s := fmt.Sprintf(`DB.Exec("ALTER TABLE %s ADD CONSTRAINT fk_%s_%s FOREIGN KEY (%s) REFERENCES %s(%s) %s")`,
+				tableNameStringFunc(table.Name),
+				tableNameStringFunc(table.Name),
+				tableNameStringFunc(v[0].Edge.Table),
+				tsNameStringFunc(v[0].Edge.LocalKey),
+				tableNameStringFunc(v[0].Edge.Table),
+				tsNameStringFunc(v[0].Edge.TableKey),
+				u,
+			)
+
+			ss += fmt.Sprintf("%s\n", s)
+
+		}
+
+		return ss
 	}
 
 	requiredEdge := func(column types.Column) bool {
@@ -324,7 +355,6 @@ func templateFunctions(data *types.TemplateData) template.FuncMap {
 
 	tsCreateIgnoreFunc := func(table types.Table, column types.Column) bool {
 		return requiredEdge(column) || hasRequiredEdge(table, column)
-
 	}
 
 	tsCreateUnionFunc := func(table types.Table) string {
@@ -365,31 +395,32 @@ func templateFunctions(data *types.TemplateData) template.FuncMap {
 	}
 
 	return template.FuncMap{
-		"plural":               inflection.Plural,
-		"models":               modelsFunc,
-		"tsName":               tsNameFunc,
-		"tsNameString":         tsNameStringFunc,
-		"tableName":            tableNameFunc,
-		"tableNameString":      tableNameStringFunc,
-		"tsType":               tsTypeFunc,
-		"columnOptional":       columnOptionalFunc,
-		"columnOptionalCreate": columnOptionalCreateFunc,
-		"uniqueRelations":      uniqueRelationsFunc,
-		"tsOptionalCreate":     tsOptionalCreateFunc,
-		"tsNullableCreate":     tsNullableCreateFunc,
-		"tsOptionalKey":        tsOptionalKeyFunc,
-		"tsOptional":           tsOptionalFunc,
-		"tsCreateOmit":         tsCreateOmitFunc,
-		"ignoreRoute":          ignoreRouteFunc,
-		"ignoreAllRoute":       ignoreAllRouteFunc,
-		"allowValidation":      allowValidationFunc,
-		"hasRegexValidation":   hasRegexValidationFunc,
-		"tableHasValidation":   tableHasValidationFunc,
-		"normalizeParam":       normalizeParamFunc,
-		"tsCreateIgnore":       tsCreateIgnoreFunc,
-		"cleanRequiredEdges":   cleanRequiredEdgesFunc,
-		"tsCreateUnion":        tsCreateUnionFunc,
-		"tablePascal":          tablePascalFunc,
-		"setNullFieldType":     setNullFieldTypeFunc,
+		"plural":                inflection.Plural,
+		"models":                modelsFunc,
+		"tsName":                tsNameFunc,
+		"tsNameString":          tsNameStringFunc,
+		"tableName":             tableNameFunc,
+		"tableNameString":       tableNameStringFunc,
+		"tsType":                tsTypeFunc,
+		"columnOptional":        columnOptionalFunc,
+		"columnOptionalCreate":  columnOptionalCreateFunc,
+		"uniqueRelations":       uniqueRelationsFunc,
+		"tsOptionalCreate":      tsOptionalCreateFunc,
+		"tsNullableCreate":      tsNullableCreateFunc,
+		"tsOptionalKey":         tsOptionalKeyFunc,
+		"tsOptional":            tsOptionalFunc,
+		"tsCreateOmit":          tsCreateOmitFunc,
+		"ignoreRoute":           ignoreRouteFunc,
+		"ignoreAllRoute":        ignoreAllRouteFunc,
+		"allowValidation":       allowValidationFunc,
+		"hasRegexValidation":    hasRegexValidationFunc,
+		"tableHasValidation":    tableHasValidationFunc,
+		"normalizeParam":        normalizeParamFunc,
+		"tsCreateIgnore":        tsCreateIgnoreFunc,
+		"cleanRequiredEdges":    cleanRequiredEdgesFunc,
+		"tsCreateUnion":         tsCreateUnionFunc,
+		"tablePascal":           tablePascalFunc,
+		"setNullFieldType":      setNullFieldTypeFunc,
+		"getTableFKConstraints": getTableFKConstraintsFunc,
 	}
 }

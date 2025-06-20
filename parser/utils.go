@@ -34,12 +34,48 @@ func tags(f reflect.StructField) types.Tags {
 
 	gormTagString := utils.CleanString(f.Tag.Get("gorm"), " ")
 	if len(gormTagString) > 0 {
-		gormTag := types.GormTag{}
+		gormTag := types.GormTag{
+			PrimaryKey: strings.Contains(gormTagString, "primarykey"),
+		}
 		gormTagStringArray := strings.Split(gormTagString, ";")
 		for _, value := range gormTagStringArray {
+
 			if value == "unique" {
 				gormTag.Unique = true
 			}
+
+			if strings.Contains(value, "OnUpdate:CASCADE") {
+				gormTag.OnUpdate = "CASCADE"
+			}
+
+			if strings.Contains(value, "OnUpdate:SET NLL") {
+				gormTag.OnUpdate = "SET NLL"
+			}
+
+			if strings.Contains(value, "OnUpdate:RESTRICT") {
+				gormTag.OnUpdate = "RESTRICT"
+			}
+
+			if strings.Contains(value, "OnUpdate:NO ACTION") {
+				gormTag.OnUpdate = "NO ACTION"
+			}
+
+			if strings.Contains(value, "OnDelete:CASCADE") {
+				gormTag.OnDelete = "CASCADE"
+			}
+
+			if strings.Contains(value, "OnDelete:SET NLL") {
+				gormTag.OnDelete = "SET NLL"
+			}
+
+			if strings.Contains(value, "OnDelete:RESTRICT") {
+				gormTag.OnDelete = "RESTRICT"
+			}
+
+			if strings.Contains(value, "OnDelete:NO ACTION") {
+				gormTag.OnDelete = "NO ACTION"
+			}
+
 			if strings.HasPrefix(value, "foreignKey:") {
 				gormTag.ForeignKey = utils.CleanString(value, "foreignKey:")
 			}

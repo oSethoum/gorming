@@ -8,6 +8,7 @@ import (
 
 	"github.com/iancoleman/strcase"
 	"github.com/jinzhu/inflection"
+	"github.com/rs/xid"
 )
 
 func Camel(s string) string {
@@ -89,4 +90,8 @@ func CurrentGoMod() (string, string) {
 		cwd = filepath.Dir(cwd)
 	}
 
+}
+
+func UID() string {
+	return strings.ToUpper(xid.New().String())
 }

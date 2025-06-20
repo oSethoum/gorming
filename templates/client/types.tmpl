@@ -1,68 +1,70 @@
+type DistributiveOmit<T, K extends keyof any> = T extends any
+  ? Omit<T, K>
+  : never;
+
 {{- range .Schema.Types }}
 export type {{ .Name }} = {
-    {{ range .Columns -}}
-    {{- if .Tags.Json.Ignore}}{{ continue }}{{ end -}}
-    {{ tsName . }}{{- tsOptional . -}}: {{ tsType . }};
-    {{ end -}}
+  {{ range .Columns -}}
+  {{- if .Tags.Json.Ignore}}{{ continue }}{{ end -}}
+  {{ tsName . }}{{- tsOptional . -}}: {{ tsType . }};
+  {{ end -}}
 }
 {{ end }}
 
 {{- range .Schema.Tables }}
 
 export type {{ .Name }} = {
-    {{ range .Columns -}}
-    {{ $column := . }}
-    {{ if eq .Name "SetNULL" -}} {{ continue }} {{ end -}}
-    {{- if .Tags.Json.Ignore}}{{ continue }}{{ end -}}
-    {{-  with .Edge -}}
-    {{ tsName $column }}?: {{ tsType $column }};
-    {{- else -}}
-    {{ tsName $column }}{{- tsOptional $column -}}: {{ tsType $column }};
-    {{- end -}}
-    {{ end -}}
+  {{ range .Columns -}}
+  {{ $column := . }}
+  {{- if .Tags.Json.Ignore}}{{ continue }}{{ end -}}
+  {{-  with .Edge -}}
+  {{ tsName $column }}?: {{ tsType $column }};
+  {{- else -}}
+  {{ tsName $column }}{{- tsOptional $column -}}: {{ tsType $column }};
+  {{- end -}}
+  {{ end -}}
 }
-{{ end }}
+{{ end -}}
 
 {{- range .Schema.Tables }}
 {{ $table := . }}
-  export type {{ .Name }}Relations = {
-    {{ range .Columns -}}
-    {{- $column := . -}}
+export type {{ .Name }}Relations = {
+  {{ range .Columns -}}
+  {{- $column := . -}}
     {{ with .Edge -}}
     {{ tsName $column }}:"{{ tableNameString .Table }}";
-    {{ end -}}
-    {{ end -}}
-  };
+    {{ end }}
+  {{- end }}
+};
 
-  export type {{ .Name }}Fields = Omit<{{ .Name }}, keyof {{ .Name }}Relations>;
-  export type {{ .Name }}UniqueRelations = "{{ uniqueRelations . }}";
+export type {{ .Name }}Fields = Omit<{{ .Name }}, keyof {{ .Name }}Relations>;
+export type {{ .Name }}UniqueRelations = "{{ uniqueRelations . }}";
 
-  export type {{ .Name }}CreateInput = {
-    {{- range .Columns -}}
-      {{- $column := . -}}
-      {{- if or ( .Tags.Json.Ignore ) ( tsCreateIgnore $table $column ) }}{{ continue }}{{end -}}
-      {{ if eq .Name "SetNULL" -}} {{ continue }} {{ end -}}
-      {{- with .Edge }}
-      {{ tsName $column }}?: Omit<{{ $column.RawType }}CreateInput,"{{ tsNameString .TableKey}}">{{- if $column.Slice}}[]{{- end -}};
-      {{- else }}
-      {{ tsOptionalKey . }}
-      {{ tsName $column }}{{- tsOptionalCreate $column  -}}: {{ tsType $column }}{{- tsNullableCreate $column  -}};
-      {{- end }}
-    {{- end }}
-  } {{ tsCreateUnion $table }};
+export type {{ .Name }}CreateInput = {
+{{- range .Columns }}
+  {{- $column := . -}}
+  {{- if or ( .Tags.Json.Ignore ) ( tsCreateIgnore $table $column ) }}{{ continue }}{{end -}}
+  {{- with .Edge }}
+  {{ tsName $column }}?: DistributiveOmit<{{ $column.RawType }}CreateInput,"{{ tsNameString .TableKey}}" | "{{ tsNameString $table.Name}}">{{- if $column.Slice}}[]{{- end -}};
+  {{- else -}}
+  {{ tsOptionalKey . }}
+  {{ tsName $column }}{{- tsOptionalCreate $column  -}}: {{ tsType $column }}{{- tsNullableCreate $column  -}};
+  {{- end }}
+{{- end }}
+}{{ tsCreateUnion $table -}};
 
-  export type {{ .Name }}UpdateInput = {
-    {{- range .Columns -}}
-    {{- $column := . -}}
-      {{- if .Tags.Json.Ignore }}{{ continue }}{{end}}
-      {{- with .Edge }}
-      {{ tsName $column }}?: {{ $column.RawType }}UpdateInput{{- if $column.Slice}}[]{{- end -}};
-      {{- else }}
-      {{ tsName $column }}?: {{ tsType $column }} | null;
-      {{- end -}}
-    {{- end -}}
-  };
-{{ end }}
+export type {{ .Name }}UpdateInput = {
+{{- range .Columns -}}
+{{- $column := . -}}
+  {{- if .Tags.Json.Ignore }}{{ continue }}{{end}}
+  {{- with .Edge }}
+  {{ tsName $column }}?: {{ $column.RawType }}UpdateInput{{- if $column.Slice}}[]{{- end -}};
+  {{- else }}
+  {{ tsName $column }}?: {{ tsType $column }} | null;
+  {{- end -}}
+{{- end }}
+};
+{{ end -}}
 
 export type TSchema = {
   {{ range .Schema.Tables -}}

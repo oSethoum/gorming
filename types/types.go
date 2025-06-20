@@ -20,7 +20,6 @@ const (
 	FileResponse
 	FileMiddlewares
 	FileWs
-	FilePrivacy
 	FileUtils
 	FileApi
 	FileResource
@@ -112,12 +111,15 @@ type TemplateData struct {
 }
 
 type GormTag struct {
+	PrimaryKey bool   `json:"primary_key,omitempty"`
 	Column     string `json:"column,omitempty"`
 	Default    string `json:"default,omitempty"`
 	Unique     bool   `json:"unique,omitempty"`
 	ForeignKey string `json:"foreign_key,omitempty"`
 	References string `json:"reference,omitempty"`
 	Ignore     bool   `json:"ignore,omitempty"`
+	OnUpdate   string `json:"on_update,omitempty"`
+	OnDelete   string `json:"on_delete,omitempty"`
 	Many2Many  string `json:"many2many,omitempty"`
 }
 

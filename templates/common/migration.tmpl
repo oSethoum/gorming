@@ -26,5 +26,17 @@ func Migrate() error {
             return err
         }
     {{- end  }}
+
+    addForeignKeys()
+
     return nil
+}
+
+
+func addForeignKeys() {
+    if DB != nil {
+        {{ range .Schema.Tables }}
+            {{- getTableFKConstraints . -}}
+        {{ end -}}
+    }
 }

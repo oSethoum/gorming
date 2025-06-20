@@ -43,17 +43,20 @@ func QueryResource[T any](resource string) fiber.Handler {
 		if err := client.Model(new(T)).Count(&count).Error; err != nil {
 			return ErrorKey(c, "error_querying_count", err)
 		}
+
 		if limit != nil {
 			client.Limit(*limit)
 		}
+
 		if offset != nil {
 			client.Offset(*offset)
 		}
+
 		if err := client.Find(result).Error; err != nil {
 			return ErrorKey(c, "error_querying_data", err)
 		}
 
-		data := fiber.Map{"count": count, "result": result}
+		data := fiber.Map{"count": count, resource: result}
 		return Success(c, data)
 	}
 }
@@ -65,9 +68,11 @@ func CreateResource[T any](resource string) fiber.Handler {
 		if err != nil {
 			return ErrorKey(c, "error_parsing_body", err)
 		}
+
 		if len(body) == 0 {
 			return ErrorKey(c, "error_empty_body_array", nil)
 		}
+
 		err = db.DB.WithContext(c.UserContext()).Transaction(func(tx *gorm.DB) error {
 			for i, v := range body {
 				if err := validate.Struct(v); err != nil {
@@ -80,6 +85,7 @@ func CreateResource[T any](resource string) fiber.Handler {
 			}
 			return nil
 		})
+
 		if err != nil {
 			return ErrorKey(c, "error_creating_resource", err)
 		}
@@ -98,6 +104,7 @@ func SaveResource[T any](resource string) fiber.Handler {
 		if len(body) == 0 {
 			return ErrorKey(c, "error_empty_body_array", nil)
 		}
+
 		ids := []any{}
 		err = db.DB.WithContext(c.UserContext()).Transaction(func(tx *gorm.DB) error {
 			if c.QueryBool("unscoped") {
@@ -119,15 +126,18 @@ func SaveResource[T any](resource string) fiber.Handler {
 			}
 			return nil
 		})
+
 		if err != nil {
 			return ErrorKey(c, "error_saving_resource", err)
 		}
+		
 		data := []T{}
 		query := db.Query{Where: &db.Where{Field: &[3]any{"id", "in", ids}}}
 		client, err := query.P(db.DB.WithContext(c.UserContext()), resource)
 		if err != nil {
 			return ErrorKey(c, "error_parsing_query", err)
 		}
+
 		err = client.Find(&data).Error
 		if err != nil {
 			return ErrorKey(c, "error_querying_data", err)
@@ -143,9 +153,11 @@ func UpdateResource[T any](resource string) fiber.Handler {
 		if err != nil {
 			return ErrorKey(c, "error_parsing_body", err)
 		}
+
 		if len(body) == 0 {
 			return ErrorKey(c, "error_empty_body_array", nil)
 		}
+
 		ids := []any{}
 		err = db.DB.WithContext(c.UserContext()).Transaction(func(tx *gorm.DB) error {
 			if c.QueryBool("unscoped") {
@@ -166,6 +178,7 @@ func UpdateResource[T any](resource string) fiber.Handler {
 			}
 			return nil
 		})
+
 		if err != nil {
 			return ErrorKey(c, "error_updating_resource", err)
 		}
@@ -175,6 +188,7 @@ func UpdateResource[T any](resource string) fiber.Handler {
 		if err != nil {
 			return ErrorKey(c, "error_parsing_query", err)
 		}
+
 		err = client.Find(&data).Error
 		if err != nil {
 			return ErrorKey(c, "error_querying_data", err)
@@ -187,29 +201,34 @@ func DeleteResource[T any](resource string) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		body := new(db.Where)
 		err := c.BodyParser(body)
-		unscoped := c.QueryBool("unscoped")
 		if err != nil {
 			return ErrorKey(c, "error_parsing_body", err)
 		}
+
 		predicate, vars, err := body.P()
 		if err != nil {
 			return ErrorKey(c, "error_parsing_where_predicate", err)
 		}
+		
 		data := []T{}
-
-		client := db.DB.WithContext(c.UserContext()).Model(new(T))
+		client := db.DB.WithContext(c.UserContext())
+		
+		unscoped := c.QueryBool("unscoped")
 		if unscoped {
 			client = client.Unscoped()
 		}
+
 		client.Where(predicate, vars...).Find(&data)
 		if len(data) == 0 {
 			return ErrorKey(c, "error_nothing_to_delete", nil)
 		}
-		client = db.DB.WithContext(c.UserContext()).Model(new(T))
+
+		client = db.DB.WithContext(c.UserContext())
 		if unscoped {
 			client = client.Unscoped()
 		}
-		err = client.Delete(predicate, vars...).Error
+
+		err = client.Where(predicate, vars...).Delete(new(T)).Error
 		if err != nil {
 			return ErrorKey(c, "error_deleting_resources", err)
 		}
