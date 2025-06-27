@@ -4,6 +4,6 @@ import (
 	"gorm.io/gorm"
 )
 
-func queryHook(client *gorm.DB, q *Query, table string) *gorm.DB {
+func queryHook(client *gorm.DB, table string, q *Query) *gorm.DB {
 	return client
 }

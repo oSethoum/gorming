@@ -45,6 +45,7 @@ func New(config types.Config) types.Engine {
 			writeTemplate("client/api", filepath.Join(v, "api.ts"), data, types.FileTsApi)
 			writeTemplate("client/types", filepath.Join(v, "types.ts"), data, types.FileTsTypes)
 			writeTemplate("client/event", filepath.Join(v, "event.ts"), data, types.FileTsEvent)
+			writeTemplate("client/request", filepath.Join(v, "request.ts"), data, types.FileRequest)
 		}
 	}
 }

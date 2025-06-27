@@ -40,9 +40,15 @@ func (q *Query) P(client *gorm.DB, table string) (*gorm.DB, error) {
 		return nil, errors.New("query: gorm client is nil")
 	}
 
-	queryHook(client, q, table)
+	queryHook(client, table, q)
 
-	var count uint
+	countFn := func() func() uint {
+		var value uint = 0
+			return func() uint {
+				value++
+				return value
+		}
+	}()
 
 	if len(q.Preloads) > 0 {
 		relations, ok := relationsMap[table]
@@ -77,7 +83,7 @@ func (q *Query) P(client *gorm.DB, table string) (*gorm.DB, error) {
 			if _, ok := relationsMap[table][key]; !ok {
 				return nil, fmt.Errorf("query: invalid with relation %s", key)
 			}
-			join, query, vars, err := value.P(count, prefix, table, relationsMap[table][key])
+			join, query, vars, err := value.P(countFn, prefix, table, relationsMap[table][key])
 			if err != nil {
 				return nil, err
 			}
@@ -134,12 +140,12 @@ func (q *Query) P(client *gorm.DB, table string) (*gorm.DB, error) {
 	return client, nil
 }
 
-func (w *With) P(count uint, prefix, table string, relation []string) (string, string, []any, error) {
+func (w *With) P(countFn func() uint, prefix, table string, relation []string) (string, string, []any, error) {
 
 	var err error
 	var vars []any
 	var where, join string
-	count++
+	count := countFn
 
 	newPrefix := fmt.Sprintf("%s_%d", prefix+relation[0], count)
 
@@ -176,7 +182,7 @@ func (w *With) P(count uint, prefix, table string, relation []string) (string, s
 		table = relation[0]
 		for key, with := range w.With {
 			if relation, ok := relationsMap[relation[0]][key]; ok {
-				subJoin, subWhere, subVars, subErr := with.P(count, prefix, newPrefix, relation)
+				subJoin, subWhere, subVars, subErr := with.P(countFn, prefix, newPrefix, relation)
 				if subErr != nil {
 					return "", "", nil, fmt.Errorf("with: cannot find relation %s for table %s", key, table)
 				}
@@ -231,7 +237,14 @@ func (w *Where) P(prefixes ...string) (string, []any, error) {
 			andVariables = append(andVariables, vs...)
 		}
 
-		queries = append(queries, strings.Join(andQueries, " AND "))
+		if len(w.And) == 1 {
+			queries = append(queries, andQueries...)
+		}
+
+		if len(w.And) >= 2 {
+			queries = append(queries, "("+strings.Join(andQueries, " AND ")+")")
+		}
+
 		variables = append(variables, andVariables...)
 	}
 
@@ -252,7 +265,7 @@ func (w *Where) P(prefixes ...string) (string, []any, error) {
 			queries = append(queries, orQueries...)
 		}
 
-		if len(w.Or) == 2 {
+		if len(w.Or) >= 2 {
 			queries = append(queries, "("+strings.Join(orQueries, " OR ")+")")
 		}
 

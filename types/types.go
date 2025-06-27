@@ -21,6 +21,7 @@ const (
 	FileMiddlewares
 	FileWs
 	FileUtils
+	FileRequest
 	FileApi
 	FileResource
 	FileSchema

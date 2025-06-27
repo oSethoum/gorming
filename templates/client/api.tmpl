@@ -1,101 +1,9 @@
+import type { ApiResponse } from "./request";
 import type { TSchema, TQuery } from "./types";
 
-export type ApiResponseError = {
-  type: "validation" | "database" | "other";
-  index?: number;
-  message: string;
-  key?: string;
-  validation?: Array<{
-    field: string;
-    tag: string;
-    param?: string;
-    value: string;
-  }>;
-  database?: {
-    field?: string;
-    constraint?: string;
-  };
-};
-
-export type ApiResponse<T> = {
-  code: number;
-  data?: T;
-  error?: ApiResponseError;
-  status: "success" | "error";
-};
-
-export type Request = <T>(
-  url: string,
-  init?: RequestInit
-) => Promise<ApiResponse<T>>;
-
-export type Config = {
-  debug?: boolean;
-  headers?: { [key in string]: (() => string) | string };
-};
-
-export const createRequest = (baseURL: string, config?: Config): Request => {
-  return async <T>(
-    url: string,
-    init?: RequestInit
-  ): Promise<ApiResponse<T>> => {
-    const method = init?.method || "GET";
-
-    const headers: Record<string, any> = {
-      ...init?.headers,
-    };
-
-    if (config?.headers) {
-      for (const [key, value] of Object.entries(config?.headers)) {
-        if (typeof value == "function") {
-          headers[key] = value();
-        } else {
-          headers[key] = value;
-        }
-      }
-    }
-
-    let response = await fetch(`${baseURL}${url}`, {
-      method,
-      ...init,
-      headers,
-      credentials: "include",
-    });
-
-    const contentType = response.headers.get("content-type");
-    if (contentType == "application/json") {
-      const jsonData = await response.json();
-      if (config?.debug) {
-        console.log({
-          url,
-          body: init?.body,
-          response: jsonData,
-        });
-      }
-      return jsonData;
-    } else {
-      const json: ApiResponse<T> = {
-        code: 400,
-        status: "error",
-        error: {
-          type: "other",
-          message: await response.text(),
-        },
-      };
-      if (config?.debug) {
-        console.log({
-          url,
-          body: init?.body,
-          response: json,
-        });
-      }
-      return json;
-    }
-  };
-};
-
-export const createApi = (baseURL: string, config?: Config) => {
-  const request = createRequest(baseURL, config);
+export const createApi = (
+  request: <T>(url: string, init?: RequestInit) => Promise<ApiResponse<T>>
+) => {
   return {
     async query<T extends keyof TSchema>(
       resource: T,
@@ -144,10 +52,20 @@ export const createApi = (baseURL: string, config?: Config) => {
     async update<T extends keyof TSchema>(
       resource: T,
       input: Array<TSchema[T]["update"]>,
-      unscoped?: boolean
+      options?: {
+        unscoped?: boolean;
+        select?: string[];
+        omit?: string[];
+      }
     ) {
+      const selects =
+        options?.select || input.length > 0 ? Object.keys(input[0]) : [];
+      const omits = options?.omit || [];
+
       return request<Array<TSchema[T]["type"]>>(
-        `/${resource}${unscoped ? "?unscoped=true" : ""}`,
+        `/${resource}?select=${selects.join(",")}&omit=${omits.join(",")}${
+          options?.unscoped ? "&unscoped=true" : ""
+        }`,
         {
           method: "PATCH",
           headers: {
@@ -160,16 +78,19 @@ export const createApi = (baseURL: string, config?: Config) => {
 
     async delete<T extends keyof TSchema>(
       resource: T,
-      where: TQuery<T>["where"] & { unscoped?: boolean }
+      predicate: Omit<
+        TQuery<T>,
+        "select" | "omit" | "offset" | "limit" | "orders" | "preloads"
+      > & { unscoped?: boolean }
     ) {
       return request<Array<TSchema[T]["type"]>>(
-        `/${resource}${where.unscoped ? "?unscoped=true" : ""}`,
+        `/${resource}${predicate.unscoped ? "?unscoped=true" : ""}`,
         {
           method: "DELETE",
           headers: {
             "content-type": "application/json",
           },
-          body: JSON.stringify(where),
+          body: JSON.stringify(predicate),
         }
       );
     },

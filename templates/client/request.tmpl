@@ -1,0 +1,93 @@
+export type ApiResponseError = {
+  type: "validation" | "database" | "other";
+  index?: number;
+  message: string;
+  key?: string;
+  validation?: Array<{
+    field: string;
+    tag: string;
+    param?: string;
+    value: string;
+  }>;
+  database?: {
+    field?: string;
+    constraint?: string;
+  };
+};
+
+export type ApiResponse<T> = {
+  code: number;
+  data?: T;
+  error?: ApiResponseError;
+  status: "success" | "error";
+};
+
+export type Request = <T>(
+  url: string,
+  init?: RequestInit
+) => Promise<ApiResponse<T>>;
+
+export type Config = {
+  debug?: boolean;
+  headers?: { [key in string]: (() => string) | string };
+};
+
+export const createRequest = (baseURL: string, config?: Config): Request => {
+  return async <T>(
+    url: string,
+    init?: RequestInit
+  ): Promise<ApiResponse<T>> => {
+    const method = init?.method || "GET";
+
+    const headers: Record<string, any> = {
+      ...init?.headers,
+    };
+
+    if (config?.headers) {
+      for (const [key, value] of Object.entries(config?.headers)) {
+        if (typeof value == "function") {
+          headers[key] = value();
+        } else {
+          headers[key] = value;
+        }
+      }
+    }
+
+    let response = await fetch(`${baseURL}${url}`, {
+      method,
+      ...init,
+      headers,
+      credentials: "include",
+    });
+
+    const contentType = response.headers.get("content-type");
+    if (contentType == "application/json") {
+      const jsonData = await response.json();
+      if (config?.debug) {
+        console.log({
+          url,
+          body: init?.body,
+          response: jsonData,
+        });
+      }
+      return jsonData;
+    } else {
+      const json: ApiResponse<T> = {
+        code: 400,
+        status: "error",
+        error: {
+          type: "other",
+          message: await response.text(),
+        },
+      };
+      if (config?.debug) {
+        console.log({
+          url,
+          body: init?.body,
+          response: json,
+        });
+      }
+      return json;
+    }
+  };
+};
