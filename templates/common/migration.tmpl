@@ -35,8 +35,12 @@ func Migrate() error {
 
 func addForeignKeys() {
     if DB != nil {
+    	if DB.Migrator().HasConstraint("regions", "fk_regions_states") {
+			DB.Migrator().DropConstraint("regions", "fk_regions_states")
+		}
+		DB.Migrator().CreateConstraint("regions", "fk_regions_states FOREIGN KEY (state_id) REFERENCES states(id)")
         {{ range .Schema.Tables }}
-            {{- getTableFKConstraints . -}}
+            {{- getTableFKMigrator . -}}
         {{ end -}}
     }
 }

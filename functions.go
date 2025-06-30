@@ -336,6 +336,47 @@ func templateFunctions(data *types.TemplateData) template.FuncMap {
 		return ss
 	}
 
+	getTableFKMigratorFunc := func(table types.Table) string {
+		ss := ""
+		edges := _getRequiredEdges(table.Columns)
+
+		for _, v := range edges {
+			u := ""
+
+			if v[0].Tags.Gorm.OnUpdate != "" {
+				u += fmt.Sprintf(`ON UPDATE %s `, v[0].Tags.Gorm.OnUpdate)
+			}
+
+			if v[0].Tags.Gorm.OnDelete != "" {
+				u += fmt.Sprintf(`ON DELETE %s`, v[0].Tags.Gorm.OnDelete)
+			}
+
+			_table := tableNameStringFunc(table.Name)
+			_targetTable := tableNameStringFunc(v[0].Edge.Table)
+			_constraint := fmt.Sprintf("fk_%s_%s", _table, _targetTable)
+
+			s := fmt.Sprintf(`if DB.Migrator().HasConstraint("%s", "%s") { 
+				DB.Migrator().DropConstraint("%s", "%s") 
+			}
+			`, _table, _constraint, _table, _constraint)
+
+			s += fmt.Sprintf(`DB.Exec("ALTER TABLE %s ADD CONSTRAINT fk_%s_%s FOREIGN KEY (%s) REFERENCES %s(%s) %s")`,
+				tableNameStringFunc(table.Name),
+				tableNameStringFunc(table.Name),
+				tableNameStringFunc(v[0].Edge.Table),
+				tsNameStringFunc(v[0].Edge.LocalKey),
+				tableNameStringFunc(v[0].Edge.Table),
+				tsNameStringFunc(v[0].Edge.TableKey),
+				u,
+			)
+
+			ss += fmt.Sprintf("%s\n", s)
+
+		}
+
+		return ss
+	}
+
 	requiredEdge := func(column types.Column) bool {
 		return !(utils.In(column.Name, "ID", "CreatedAt", "UpdatedAt", "DeletedAt") ||
 			strings.HasPrefix(column.Type, "*") || column.Edge != nil ||
@@ -422,5 +463,6 @@ func templateFunctions(data *types.TemplateData) template.FuncMap {
 		"tablePascal":           tablePascalFunc,
 		"setNullFieldType":      setNullFieldTypeFunc,
 		"getTableFKConstraints": getTableFKConstraintsFunc,
+		"getTableFKMigrator":    getTableFKMigratorFunc,
 	}
 }
