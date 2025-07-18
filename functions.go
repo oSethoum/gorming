@@ -313,10 +313,14 @@ func templateFunctions(data *types.TemplateData) template.FuncMap {
 
 			if v[0].Tags.Gorm.OnUpdate != "" {
 				u += fmt.Sprintf(`ON UPDATE %s `, v[0].Tags.Gorm.OnUpdate)
+			} else if v[1].Tags.Gorm.OnUpdate != "" {
+				u += fmt.Sprintf(`ON UPDATE %s `, v[1].Tags.Gorm.OnUpdate)
 			}
 
 			if v[0].Tags.Gorm.OnDelete != "" {
 				u += fmt.Sprintf(`ON DELETE %s`, v[0].Tags.Gorm.OnDelete)
+			} else if v[1].Tags.Gorm.OnDelete != "" {
+				u += fmt.Sprintf(`ON DELETE %s`, v[1].Tags.Gorm.OnDelete)
 			}
 
 			s := fmt.Sprintf(`DB.Exec("ALTER TABLE %s ADD CONSTRAINT fk_%s_%s FOREIGN KEY (%s) REFERENCES %s(%s) %s")`,
@@ -345,12 +349,15 @@ func templateFunctions(data *types.TemplateData) template.FuncMap {
 
 			if v[0].Tags.Gorm.OnUpdate != "" {
 				u += fmt.Sprintf(`ON UPDATE %s `, v[0].Tags.Gorm.OnUpdate)
+			} else if v[1].Tags.Gorm.OnUpdate != "" {
+				u += fmt.Sprintf(`ON UPDATE %s `, v[1].Tags.Gorm.OnUpdate)
 			}
 
 			if v[0].Tags.Gorm.OnDelete != "" {
 				u += fmt.Sprintf(`ON DELETE %s`, v[0].Tags.Gorm.OnDelete)
+			} else if v[1].Tags.Gorm.OnDelete != "" {
+				u += fmt.Sprintf(`ON DELETE %s`, v[1].Tags.Gorm.OnDelete)
 			}
-
 			_table := tableNameStringFunc(table.Name)
 			_targetTable := tableNameStringFunc(v[0].Edge.Table)
 			_constraint := fmt.Sprintf("fk_%s_%s", _table, _targetTable)

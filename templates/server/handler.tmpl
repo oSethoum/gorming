@@ -149,13 +149,13 @@ func UpdateResource[T any](resource string) fiber.Handler {
 
 func DeleteResource[T any](resource string) fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		body := new(db.With)
+		body := new(db.Where)
 		err := c.BodyParser(body)
 		if err != nil {
 			return ErrorKey(c, "error_parsing_body", err)
 		}
 
-		query := db.Query{Where: body.Where, With: body.With}
+		query := db.Query{Where: body}
 		client, err := query.P(db.DB.WithContext(c.UserContext()), resource)
 		if err != nil {
 			return ErrorKey(c, "error_parsing_where_predicate", err)
@@ -176,13 +176,7 @@ func DeleteResource[T any](resource string) fiber.Handler {
 			client = client.Unscoped()
 		}
 
-		ids := []any{}
-		for _, v := range data {
-			id := reflect.ValueOf(v).FieldByName("ID").Interface()
-			ids = append(ids, id)
-		}
-
-		if err := client.Where("id IN (?)", ids).Delete(new(T)).Error; err != nil {
+		if err := client.Delete(&data).Error; err != nil {
 			return ErrorKey(c, "error_deleting_resources", err)
 		}
 		return Success(c, data)

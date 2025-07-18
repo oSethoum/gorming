@@ -79,11 +79,8 @@ export type TSchema = {
             ? Omit<TQuery<{{ .Name }}Relations[K]>, "offset" | "limit" | "where" | "orders">
             : TQuery<{{ .Name }}Relations[K]>;
       };
-      with: {
-         [K in keyof {{ .Name }}Relations]?: {
-            with?: TWith<{{ .Name }}Relations[K]>;
-            where?: TWhere<{{ .Name }}Relations[K]>;
-         };
+    has: {
+         [K in keyof {{ .Name }}Relations]?: TWhere<{{ .Name }}Relations[K]>
       };
   };
   {{ end }}
@@ -98,18 +95,17 @@ export type TWhere<T extends keyof TSchema, K = keyof TSchema[T]["fields"]> = {
       | [name: K, predicate: TArrayPredicate, Array<any>]
       | [name: K, predicate: TBetweenPredicate, [any, any]]
       | [name: K, predicate: TPredicate, any];
+   has?: TSchema[T]["has"];
 };
 
-export type TPredicate = "like" | "=" | "<>" | ">" | ">=" | "<" | "<=";
+
+export type TPredicate = "like" | "=" | "<>" | ">" | ">=" | "<" | "<=" | "contains" | "prefix" | "suffix";
 export type TBetweenPredicate = "between";
 export type TArrayPredicate = "in" | "not in";
 export type TNullPredicate = "null" | "not null";
 
-type TWith<T extends keyof TSchema> = TSchema[T]["with"];
-
 export type TQuery<T extends keyof TSchema> = {
    select?: Array<keyof TSchema[T]["fields"]>;
-   with?: TWith<T>;
    omit?: Array<keyof TSchema[T]["fields"]>;
    offset?: number;
    limit?: number;

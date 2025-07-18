@@ -1,5 +1,5 @@
 import type { ApiResponse } from "./request";
-import type { TSchema, TQuery } from "./types";
+import type { TSchema, TQuery, TWhere } from "./types";
 
 export const createApi = (
   request: <T>(url: string, init?: RequestInit) => Promise<ApiResponse<T>>
@@ -78,10 +78,7 @@ export const createApi = (
 
     async delete<T extends keyof TSchema>(
       resource: T,
-      predicate: Omit<
-        TQuery<T>,
-        "select" | "omit" | "offset" | "limit" | "orders" | "preloads"
-      > & { unscoped?: boolean }
+      predicate: TWhere<T> & { unscoped?: boolean }
     ) {
       return request<Array<TSchema[T]["type"]>>(
         `/${resource}${predicate.unscoped ? "?unscoped=true" : ""}`,

@@ -1,4 +1,4 @@
-// this query file for sqlite and postgres
+// this query file is for sqlite to adapt it to " instead of `
 
 package db
 
@@ -12,27 +12,22 @@ import (
 	"gorm.io/gorm"
 )
 
-type With struct {
-	Where *Where           `json:"where,omitempty"`
-	With  map[string]*With `json:"with,omitempty"`
-}
-
-type Where struct {
-	Not   *Where   `json:"not,omitempty"`
-	Or    []*Where `json:"or,omitempty"`
-	And   []*Where `json:"and,omitempty"`
-	Field *[3]any  `json:"field,omitempty"`
-}
-
 type Query struct {
 	Select   []string          `json:"select,omitempty"`
 	Omit     []string          `json:"omit,omitempty"`
-	With     map[string]*With  `json:"with,omitempty"`
 	Limit    *int              `json:"limit,omitempty"`
 	Offset   *int              `json:"offset,omitempty"`
-	Where    *Where            `json:"where,omitempty"`
 	Orders   [][2]string       `json:"orders,omitempty"`
 	Preloads map[string]*Query `json:"preloads,omitempty"`
+	Where    *Where            `json:"where,omitempty"`
+}
+
+type Where struct {
+	Not   *Where            `json:"not,omitempty"`
+	Or    []*Where          `json:"or,omitempty"`
+	And   []*Where          `json:"and,omitempty"`
+	Field *[3]any           `json:"field,omitempty"`
+	Has   map[string]*Where `json:"has,omitempty"`
 }
 
 func (q *Query) P(client *gorm.DB, table string) (*gorm.DB, error) {
@@ -44,9 +39,9 @@ func (q *Query) P(client *gorm.DB, table string) (*gorm.DB, error) {
 
 	countFn := func() func() uint {
 		var value uint = 0
-			return func() uint {
-				value++
-				return value
+		return func() uint {
+			value++
+			return value
 		}
 	}()
 
@@ -77,24 +72,6 @@ func (q *Query) P(client *gorm.DB, table string) (*gorm.DB, error) {
 		}
 	}
 
-	prefix := client.NamingStrategy.TableName("")
-	if len(q.With) > 0 {
-		for key, value := range q.With {
-			if _, ok := relationsMap[table][key]; !ok {
-				return nil, fmt.Errorf("query: invalid with relation %s", key)
-			}
-			join, query, vars, err := value.P(countFn, prefix, table, relationsMap[table][key])
-			if err != nil {
-				return nil, err
-			}
-			if len(query) > 0 {
-				client = client.InnerJoins(strings.Join([]string{join, query}, " AND "), vars...)
-			} else {
-				client = client.InnerJoins(join, vars...)
-			}
-		}
-	}
-
 	if len(q.Select) > 0 {
 		client = client.Select(q.Select)
 	}
@@ -103,13 +80,19 @@ func (q *Query) P(client *gorm.DB, table string) (*gorm.DB, error) {
 		client.Omit(q.Omit...)
 	}
 
+	prefix := client.NamingStrategy.TableName("")
 	if q.Where != nil {
-		query, variables, err := q.Where.P(prefix + table + ".")
+		joins, query, vars, err := q.Where.P(table, "", prefix, countFn)
 		if err != nil {
 			return nil, err
 		}
+
+		for _, join := range joins {
+			client = client.Joins(join)
+		}
+
 		if query != "" {
-			client = client.Where(query, variables...)
+			client = client.Where(query, vars...)
 		}
 	}
 
@@ -140,193 +123,189 @@ func (q *Query) P(client *gorm.DB, table string) (*gorm.DB, error) {
 	return client, nil
 }
 
-func (w *With) P(countFn func() uint, prefix, table string, relation []string) (string, string, []any, error) {
-
-	var err error
-	var vars []any
-	var where, join string
-	count := countFn
-
-	newPrefix := fmt.Sprintf("%s_%d", prefix+relation[0], count)
-
-	if len(relation) == 3 {
-		join = fmt.Sprintf(
-			`INNER JOIN "%s" as "%s" ON "%s" = "%s"`,
-			prefix+relation[0],
-			newPrefix,
-			prefix+table+`"."`+relation[1],
-			newPrefix+`"."`+relation[2],
-		)
+func (tw *Where) P(table, asTable, prefix string, countFn func() uint) ([]string, string, []any, error) {
+	if tw == nil {
+		return nil, "", nil, nil
 	}
 
-	if len(relation) == 6 {
-		midPrefix := fmt.Sprintf("%s_%d", prefix+relation[3], count)
-		join = fmt.Sprintf(
-			`INNER JOIN "%s" as "%s" ON "%s" = "%s" INNER JOIN "%s" as "%s" ON "%s" = "%s"`,
-			prefix+relation[3],
-			midPrefix,
-			prefix+table+`"."`+relation[1],
-			midPrefix+`"."`+relation[4],
-			prefix+relation[0],
-			newPrefix,
-			newPrefix+`"."`+relation[1],
-			midPrefix+`"."`+relation[5],
-		)
-	}
+	queries := []string{}
+	joins := []string{}
+	vars := []any{}
 
-	if w.Where != nil {
-		where, vars, err = w.Where.P(newPrefix + `.`)
-	}
-
-	if len(w.With) > 0 {
-		table = relation[0]
-		for key, with := range w.With {
-			if relation, ok := relationsMap[relation[0]][key]; ok {
-				subJoin, subWhere, subVars, subErr := with.P(countFn, prefix, newPrefix, relation)
-				if subErr != nil {
-					return "", "", nil, fmt.Errorf("with: cannot find relation %s for table %s", key, table)
-				}
-				if len(subJoin) > 0 {
-					join += " " + subJoin
-				}
-				if len(subWhere) > 0 {
-					if len(where) > 0 {
-						where += " AND " + subWhere
-					} else {
-						where = subWhere
-					}
-					vars = append(subVars, vars)
-				}
-			} else {
-				return "", "", nil, fmt.Errorf("with: cannot find relation %s for table %s", key, table)
+	if len(tw.Has) > 0 {
+		count := countFn()
+		for key, value := range tw.Has {
+			relation, ok := relationsMap[table][key]
+			if !ok {
+				return nil, "", nil, fmt.Errorf("query: invalid with relation %s", key)
 			}
-		}
-	}
 
-	return join, where, vars, err
-}
+			newPrefix := fmt.Sprintf("%s_%d", prefix+relation[0], count)
 
-func (w *Where) P(prefixes ...string) (string, []any, error) {
-	var queries []string
-	var variables []any
-	var prefix string
+			if asTable == "" {
+				asTable = prefix + table
+			}
 
-	if len(prefixes) > 0 {
-		prefix = prefixes[0]
-	}
+			if len(relation) == 3 {
+				joins = append(joins, fmt.Sprintf(`INNER JOIN "%s" as "%s" ON "%s" = "%s"`,
+					prefix+relation[0],
+					newPrefix,
+					asTable+`"."`+relation[1],
+					newPrefix+`"."`+relation[2],
+				))
+			}
 
-	if w.Not != nil {
-		q, v, err := w.Not.P(prefix)
-		if err != nil {
-			return "", nil, err
-		}
-		queries = append(queries, fmt.Sprintf("NOT ( %s )", q))
-		variables = append(variables, v)
-	}
+			if len(relation) == 6 {
+				midPrefix := fmt.Sprintf("%s_%d", prefix+relation[3], count)
+				joins = append(joins, fmt.Sprintf(
+					`INNER JOIN "%s" as "%s" ON "%s" = "%s" INNER JOIN "%s" as "%s" ON "%s" = "%s"`,
+					prefix+relation[3],
+					midPrefix,
+					asTable+`"."`+relation[1],
+					midPrefix+`"."`+relation[4],
+					prefix+relation[0],
+					newPrefix,
+					newPrefix+`"."`+relation[1],
+					midPrefix+`"."`+relation[5],
+				))
+			}
 
-	if len(w.And) > 0 {
-		var andQueries []string
-		var andVariables []any
+			subJoins, subQuery, subVars, err := value.P(relation[0], newPrefix, prefix, countFn)
 
-		for _, p := range w.And {
-			q, vs, err := p.P(prefix)
 			if err != nil {
-				return "", nil, err
+				return nil, "", nil, err
 			}
-			andQueries = append(andQueries, q)
-			andVariables = append(andVariables, vs...)
+
+			if subJoins != nil {
+				joins = append(joins, subJoins...)
+			}
+
+			if subQuery != "" {
+				queries = append(queries, subQuery)
+			}
+
+			if len(subVars) > 0 {
+				vars = append(vars, subVars...)
+			}
+		}
+	}
+
+	if len(tw.And) > 0 {
+		andQueries := []string{}
+		for _, v := range tw.And {
+			andJoins, andQuery, andVars, err := v.P(table, asTable, prefix, countFn)
+			if err != nil {
+				return nil, "", nil, err
+			}
+
+			andQueries = append(andQueries, andQuery)
+			joins = append(joins, andJoins...)
+			vars = append(vars, andVars...)
 		}
 
-		if len(w.And) == 1 {
+		if len(andQueries) == 1 {
 			queries = append(queries, andQueries...)
-		}
-
-		if len(w.And) >= 2 {
+		} else if len(andQueries) > 1 {
 			queries = append(queries, "("+strings.Join(andQueries, " AND ")+")")
 		}
-
-		variables = append(variables, andVariables...)
 	}
 
-	if len(w.Or) > 0 {
-		var orQueries []string
-		var orVariables []any
-
-		for _, p := range w.Or {
-			q, vs, err := p.P(prefix)
+	if len(tw.Or) > 0 {
+		orQueries := []string{}
+		for _, v := range tw.Or {
+			orJoins, orQuery, orVars, err := v.P(table, asTable, prefix, countFn)
 			if err != nil {
-				return "", nil, err
+				return nil, "", nil, err
 			}
-			orQueries = append(orQueries, q)
-			orVariables = append(orVariables, vs...)
+			joins = append(joins, orJoins...)
+			vars = append(vars, orVars...)
+			orQueries = append(orQueries, orQuery)
 		}
 
-		if len(w.Or) == 1 {
+		if len(orQueries) == 1 {
 			queries = append(queries, orQueries...)
-		}
-
-		if len(w.Or) >= 2 {
+		} else if len(orQueries) > 1 {
 			queries = append(queries, "("+strings.Join(orQueries, " OR ")+")")
 		}
-
-		variables = append(variables, orVariables...)
 	}
 
-	if len(w.Field) != 3 {
-		return "", nil, fmt.Errorf("where: %+v has to be a valid field", w.Field)
-	}
-
-	if w.Field != nil {
-		var fieldQuery string
-		field := fmt.Sprintf("%v", w.Field[0])
-		if !isField(field) {
-			return "", nil, fmt.Errorf("where: %+v has to be a valid field", field)
+	if tw.Not != nil {
+		notJoins, notQuery, notVars, err := tw.Not.P(table, asTable, prefix, countFn)
+		if err != nil {
+			return nil, "", nil, err
 		}
-		field = strings.ReplaceAll(prefix+field, `.`, `"."`)
+		joins = append(joins, notJoins...)
+		queries = append(queries, fmt.Sprintf("NOT ( %s )", notQuery))
+		vars = append(vars, notVars...)
+	}
 
-		switch fmt.Sprintf("%v", w.Field[1]) {
+	if tw.Field != nil {
+		var fieldQuery string
+		field := fmt.Sprintf("%v", tw.Field[0])
+		if !isField(field) {
+			return nil, "", nil, fmt.Errorf("where: %+v has to be a valid field", field)
+		}
+
+		field = strings.ReplaceAll(prefix+field, ".", "`.`")
+
+		if asTable == "" {
+			asTable = table
+		}
+		asTable = fmt.Sprintf("`%s`.", asTable)
+
+		switch fmt.Sprintf("%v", tw.Field[1]) {
 
 		case "like":
-			fieldQuery = fmt.Sprintf(`"%s" LIKE (?)`, field)
-			variables = append(variables, w.Field[2])
+			fieldQuery = fmt.Sprintf(`%s"%s" LIKE (?)`, asTable, field)
+			vars = append(vars, tw.Field[2])
+		case "contains":
+			fieldQuery = fmt.Sprintf(`%s"%s" LIKE (?)`, asTable, field)
+			vars = append(vars, "%"+fmt.Sprintf("%v", tw.Field[2])+"%")
+		case "prefix":
+			fieldQuery = fmt.Sprintf(`%s"%s" LIKE (?)`, asTable, field)
+			vars = append(vars, fmt.Sprintf("%v", tw.Field[2])+"%")
+		case "suffix":
+			fieldQuery = fmt.Sprintf(`%s"%s" LIKE (?)`, asTable, field)
+			vars = append(vars, "%"+fmt.Sprintf("%v", tw.Field[2]))
 		case "null":
-			fieldQuery = fmt.Sprintf(`"%s" IS NULL`, field)
+			fieldQuery = fmt.Sprintf(`%s"%s" IS NULL`, asTable, field)
 		case "not null":
-			fieldQuery = fmt.Sprintf(`"%s" IS NOT NULL`, field)
+			fieldQuery = fmt.Sprintf(`%s"%s" IS NOT NULL`, asTable, field)
 		case "between":
-			fieldQuery = fmt.Sprintf(`"%s" BETWEEN ? AND ?`, field)
-			value := w.Field[0].([]any)
-			variables = append(variables, value[:]...)
+			fieldQuery = fmt.Sprintf(`%s"%s" BETWEEN ? AND ?`, asTable, field)
+			value := tw.Field[0].([]any)
+			vars = append(vars, value[:]...)
 		case "in":
-			fieldQuery = fmt.Sprintf(`"%s" IN (?)`, field)
-			variables = append(variables, w.Field[2])
+			fieldQuery = fmt.Sprintf(`%s"%s" IN (?)`, asTable, field)
+			vars = append(vars, tw.Field[2])
 		case "not in":
-			fieldQuery = fmt.Sprintf(`"%s" NOT IN (?)`, field)
-			variables = append(variables, w.Field[2])
+			fieldQuery = fmt.Sprintf(`%s"%s" NOT IN (?)`, asTable, field)
+			vars = append(vars, tw.Field[2])
 		case "=":
-			fieldQuery = fmt.Sprintf(`"%s" = ?`, field)
-			variables = append(variables, w.Field[2])
+			fieldQuery = fmt.Sprintf(`%s"%s" = ?`, asTable, field)
+			vars = append(vars, tw.Field[2])
 		case "<>":
-			fieldQuery = fmt.Sprintf(`"%s" <> ?`, field)
-			variables = append(variables, w.Field[2])
+			fieldQuery = fmt.Sprintf(`%s"%s" <> ?`, asTable, field)
+			vars = append(vars, tw.Field[2])
 		case ">":
-			fieldQuery = fmt.Sprintf(`"%s" > ?`, field)
-			variables = append(variables, w.Field[2])
+			fieldQuery = fmt.Sprintf(`%s"%s" > ?`, asTable, field)
+			vars = append(vars, tw.Field[2])
 		case ">=":
-			fieldQuery = fmt.Sprintf(`"%s" >= ?`, field)
-			variables = append(variables, w.Field[2])
+			fieldQuery = fmt.Sprintf(`%s"%s" >= ?`, asTable, field)
+			vars = append(vars, tw.Field[2])
 		case "<":
-			fieldQuery = fmt.Sprintf(`"%s" < ?`, field)
-			variables = append(variables, w.Field[2])
+			fieldQuery = fmt.Sprintf(`%s"%s" < ?`, asTable, field)
+			vars = append(vars, tw.Field[2])
 		case "<=":
-			fieldQuery = fmt.Sprintf(`"%s" <= ?`, field)
-			variables = append(variables, w.Field[2])
+			fieldQuery = fmt.Sprintf(`%s"%s" <= ?`, asTable, field)
+			vars = append(vars, tw.Field[2])
 		default:
-			return "", nil, fmt.Errorf("where: %+v invalid predicate", w.Field[1])
+			return nil, "", nil, fmt.Errorf("where: %+v invalid predicate", tw.Field[1])
 		}
 		queries = append(queries, fieldQuery)
 	}
-	return strings.Join(queries, " AND "), variables, nil
+
+	return joins, strings.Join(queries, " AND "), vars, nil
 }
 
 func isField(field string) bool {
