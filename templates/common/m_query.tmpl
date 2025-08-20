@@ -147,27 +147,28 @@ func (tw *Where) P(table, asTable, prefix string, countFn func() uint) ([]string
 			}
 
 			if len(relation) == 3 {
-				joins = append(joins, fmt.Sprintf("INNER JOIN `%s` as `%s` ON `%s` = `%s`",
+				joins = append(joins, fmt.Sprintf("INNER JOIN `%s` as `%s`",
 					prefix+relation[0],
 					newPrefix,
-					asTable+"`.`"+relation[1],
-					newPrefix+"`.`"+relation[2],
 				))
+				queries = append(queries,
+					fmt.Sprintf("`%s` = `%s`", asTable+`"."`+relation[1], newPrefix+`"."`+relation[2]),
+				)
 			}
 
 			if len(relation) == 6 {
 				midPrefix := fmt.Sprintf("%s_%d", prefix+relation[3], count)
 				joins = append(joins, fmt.Sprintf(
-					"INNER JOIN `%s` as `%s` ON `%s` = `%s` INNER JOIN `%s` as `%s` ON `%s` = `%s`",
+					"INNER JOIN `%s` as `%s` INNER JOIN `%s` as `%s`",
 					prefix+relation[3],
 					midPrefix,
-					asTable+"`.`"+relation[1],
-					midPrefix+"`.`"+relation[4],
 					prefix+relation[0],
 					newPrefix,
-					newPrefix+"`.`"+relation[1],
-					midPrefix+"`.`"+relation[5],
 				))
+				queries = append(queries,
+					fmt.Sprintf("`%s` = `%s`", asTable+"`.`"+relation[1], midPrefix+"`.`"+relation[4]),
+					fmt.Sprintf("`%s` = `%s`", asTable+"`.`"+relation[1], midPrefix+"`.`"+relation[5]),
+				)
 			}
 
 			subJoins, subQuery, subVars, err := value.P(relation[0], newPrefix, prefix, countFn)
