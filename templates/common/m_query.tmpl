@@ -152,7 +152,7 @@ func (tw *Where) P(table, asTable, prefix string, countFn func() uint) ([]string
 					newPrefix,
 				))
 				queries = append(queries,
-					fmt.Sprintf("`%s` = `%s`", asTable+`"."`+relation[1], newPrefix+`"."`+relation[2]),
+					fmt.Sprintf("`%s` = `%s`", asTable+"`.`"+relation[1], newPrefix+"`.`"+relation[2]),
 				)
 			}
 
