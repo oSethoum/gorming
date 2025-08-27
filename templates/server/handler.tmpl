@@ -22,7 +22,7 @@ func QueryResource[T any](resource string) fiber.Handler {
 		q := c.Query("query", "{}")
 		err := json.Unmarshal([]byte(q), query)
 		if err != nil {
-			return ErrorKey(c, "error_parsing_query", err)
+			return ErrorKey(c, "error_unmarshaling_query", err)
 		}
 
 		limit := query.Limit
@@ -33,7 +33,7 @@ func QueryResource[T any](resource string) fiber.Handler {
 
 		client, err := query.P(db.DB.WithContext(c.UserContext()), resource)
 		if err != nil {
-			return Error(c, err)
+			return ErrorKey(c,"error_parsing_query", err)
 		}
 
 		if c.QueryBool("unscoped") {
