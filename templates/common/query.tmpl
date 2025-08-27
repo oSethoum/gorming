@@ -35,8 +35,6 @@ func (q *Query) P(client *gorm.DB, table string) (*gorm.DB, error) {
 		return nil, errors.New("query: gorm client is nil")
 	}
 
-	queryHook(client, table, q)
-
 	countFn := func() func() uint {
 		var value uint = 0
 		return func() uint {
