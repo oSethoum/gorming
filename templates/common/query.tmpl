@@ -245,12 +245,12 @@ func (tw *Where) P(table, asTable, prefix string, countFn func() uint) ([]string
 			return nil, "", nil, fmt.Errorf("where: %+v has to be a valid field", field)
 		}
 
-		field = strings.ReplaceAll(prefix+field, ".", "`.`")
+		field = strings.ReplaceAll(prefix+field, ".", `"."`)
 
 		if asTable == "" {
 			asTable = table
 		}
-		asTable = fmt.Sprintf("`%s`.", asTable)
+		asTable = fmt.Sprintf(`"%s".`, asTable)
 
 		switch fmt.Sprintf("%v", tw.Field[1]) {
 
