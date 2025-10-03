@@ -79,7 +79,7 @@ export type TSchema = {
             ? Omit<TQuery<{{ .Name }}Relations[K]>, "offset" | "limit" | "where" | "orders">
             : TQuery<{{ .Name }}Relations[K]>;
       };
-    has: {
+    join: {
          [K in keyof {{ .Name }}Relations]?: TWhere<{{ .Name }}Relations[K]>
       };
   };
@@ -95,7 +95,10 @@ export type TWhere<T extends keyof TSchema, K = keyof TSchema[T]["fields"]> = {
       | [name: K, predicate: TArrayPredicate, Array<any>]
       | [name: K, predicate: TBetweenPredicate, [any, any]]
       | [name: K, predicate: TPredicate, any];
-   has?: TSchema[T]["has"];
+   inner?: TSchema[T]["join"];
+   left?: TSchema[T]["join"];
+   right?: TSchema[T]["join"];
+   full?: TSchema[T]["join"];
 };
 
 

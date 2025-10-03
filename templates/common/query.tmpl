@@ -27,7 +27,10 @@ type Where struct {
 	Or    []*Where          `json:"or,omitempty"`
 	And   []*Where          `json:"and,omitempty"`
 	Field *[3]any           `json:"field,omitempty"`
-	Has   map[string]*Where `json:"has,omitempty"`
+	Inner map[string]*Where `json:"inner,omitempty"`
+	Left  map[string]*Where `json:"left,omitempty"`
+	Right map[string]*Where `json:"right,omitempty"`
+	Full  map[string]*Where `json:"full,omitempty"`
 }
 
 func (q *Query) P(client *gorm.DB, table string) (*gorm.DB, error) {
@@ -130,9 +133,10 @@ func (tw *Where) P(table, asTable, prefix string, countFn func() uint) ([]string
 	joins := []string{}
 	vars := []any{}
 
-	if len(tw.Has) > 0 {
+	// INNER JOIN
+	if len(tw.Inner) > 0 {
 		count := countFn()
-		for key, value := range tw.Has {
+		for key, value := range tw.Inner {
 			relation, ok := relationsMap[table][key]
 			if !ok {
 				return nil, "", nil, fmt.Errorf("query: invalid with relation %s", key)
@@ -145,28 +149,192 @@ func (tw *Where) P(table, asTable, prefix string, countFn func() uint) ([]string
 			}
 
 			if len(relation) == 3 {
-				joins = append(joins, fmt.Sprintf(`INNER JOIN "%s" as "%s"`,
+				joins = append(joins, fmt.Sprintf(`INNER JOIN "%s" as "%s" ON %s`,
 					prefix+relation[0],
 					newPrefix,
-				))
-				queries = append(queries,
 					fmt.Sprintf(`"%s" = "%s"`, asTable+`"."`+relation[1], newPrefix+`"."`+relation[2]),
-				)
+				))
 			}
 
 			if len(relation) == 6 {
 				midPrefix := fmt.Sprintf("%s_%d", prefix+relation[3], count)
 				joins = append(joins, fmt.Sprintf(
-					`INNER JOIN "%s" as "%s" INNER JOIN "%s" as "%s"`,
+					`INNER JOIN "%s" as "%s" ON "%s" INNER JOIN "%s" as "%s" ON %s`,
 					prefix+relation[3],
 					midPrefix,
+					fmt.Sprintf(`"%s" = "%s"`, asTable+`"."`+relation[1], midPrefix+`"."`+relation[4]),
 					prefix+relation[0],
 					newPrefix,
-				))
-				queries = append(queries,
-					fmt.Sprintf(`"%s" = "%s"`, asTable+`"."`+relation[1], midPrefix+`"."`+relation[4]),
 					fmt.Sprintf(`"%s" = "%s"`, newPrefix+`"."`+relation[1], midPrefix+`"."`+relation[5]),
-				)
+				))
+			}
+
+			subJoins, subQuery, subVars, err := value.P(relation[0], newPrefix, prefix, countFn)
+
+			if err != nil {
+				return nil, "", nil, err
+			}
+
+			if subJoins != nil {
+				joins = append(joins, subJoins...)
+			}
+
+			if subQuery != "" {
+				queries = append(queries, subQuery)
+			}
+
+			if len(subVars) > 0 {
+				vars = append(vars, subVars...)
+			}
+		}
+	}
+
+	// LEFT JOIN
+	if len(tw.Left) > 0 {
+		count := countFn()
+		for key, value := range tw.Left {
+			relation, ok := relationsMap[table][key]
+			if !ok {
+				return nil, "", nil, fmt.Errorf("query: invalid with relation %s", key)
+			}
+
+			newPrefix := fmt.Sprintf("%s_%d", prefix+relation[0], count)
+
+			if asTable == "" {
+				asTable = prefix + table
+			}
+
+			if len(relation) == 3 {
+				joins = append(joins, fmt.Sprintf(`LEFT JOIN "%s" as "%s" ON %s`,
+					prefix+relation[0],
+					newPrefix,
+					fmt.Sprintf(`"%s" = "%s"`, asTable+`"."`+relation[1], newPrefix+`"."`+relation[2]),
+				))
+			}
+
+			if len(relation) == 6 {
+				midPrefix := fmt.Sprintf("%s_%d", prefix+relation[3], count)
+				joins = append(joins, fmt.Sprintf(
+					`LEFT JOIN "%s" as "%s" ON "%s" LEFT JOIN "%s" as "%s" ON %s`,
+					prefix+relation[3],
+					midPrefix,
+					fmt.Sprintf(`"%s" = "%s"`, asTable+`"."`+relation[1], midPrefix+`"."`+relation[4]),
+					prefix+relation[0],
+					newPrefix,
+					fmt.Sprintf(`"%s" = "%s"`, newPrefix+`"."`+relation[1], midPrefix+`"."`+relation[5]),
+				))
+			}
+
+			subJoins, subQuery, subVars, err := value.P(relation[0], newPrefix, prefix, countFn)
+
+			if err != nil {
+				return nil, "", nil, err
+			}
+
+			if subJoins != nil {
+				joins = append(joins, subJoins...)
+			}
+
+			if subQuery != "" {
+				queries = append(queries, subQuery)
+			}
+
+			if len(subVars) > 0 {
+				vars = append(vars, subVars...)
+			}
+		}
+	}
+
+	// RIGHT JOIN
+	if len(tw.Right) > 0 {
+		count := countFn()
+		for key, value := range tw.Right {
+			relation, ok := relationsMap[table][key]
+			if !ok {
+				return nil, "", nil, fmt.Errorf("query: invalid with relation %s", key)
+			}
+
+			newPrefix := fmt.Sprintf("%s_%d", prefix+relation[0], count)
+
+			if asTable == "" {
+				asTable = prefix + table
+			}
+
+			if len(relation) == 3 {
+				joins = append(joins, fmt.Sprintf(`RIGHT JOIN "%s" as "%s" ON %s`,
+					prefix+relation[0],
+					newPrefix,
+					fmt.Sprintf(`"%s" = "%s"`, asTable+`"."`+relation[1], newPrefix+`"."`+relation[2]),
+				))
+			}
+
+			if len(relation) == 6 {
+				midPrefix := fmt.Sprintf("%s_%d", prefix+relation[3], count)
+				joins = append(joins, fmt.Sprintf(
+					`RIGHT JOIN "%s" as "%s" ON "%s" RIGHT JOIN "%s" as "%s" ON %s`,
+					prefix+relation[3],
+					midPrefix,
+					fmt.Sprintf(`"%s" = "%s"`, asTable+`"."`+relation[1], midPrefix+`"."`+relation[4]),
+					prefix+relation[0],
+					newPrefix,
+					fmt.Sprintf(`"%s" = "%s"`, newPrefix+`"."`+relation[1], midPrefix+`"."`+relation[5]),
+				))
+			}
+
+			subJoins, subQuery, subVars, err := value.P(relation[0], newPrefix, prefix, countFn)
+
+			if err != nil {
+				return nil, "", nil, err
+			}
+
+			if subJoins != nil {
+				joins = append(joins, subJoins...)
+			}
+
+			if subQuery != "" {
+				queries = append(queries, subQuery)
+			}
+
+			if len(subVars) > 0 {
+				vars = append(vars, subVars...)
+			}
+		}
+	}
+
+	// FULL JOIN
+	if len(tw.Full) > 0 {
+		count := countFn()
+		for key, value := range tw.Full {
+			relation, ok := relationsMap[table][key]
+			if !ok {
+				return nil, "", nil, fmt.Errorf("query: invalid with relation %s", key)
+			}
+
+			newPrefix := fmt.Sprintf("%s_%d", prefix+relation[0], count)
+
+			if asTable == "" {
+				asTable = prefix + table
+			}
+
+			if len(relation) == 3 {
+				joins = append(joins, fmt.Sprintf(`FULL JOIN "%s" as "%s" ON %s`,
+					prefix+relation[0],
+					newPrefix,
+					fmt.Sprintf(`"%s" = "%s"`, asTable+`"."`+relation[1], newPrefix+`"."`+relation[2]),
+				))
+			}
+
+			if len(relation) == 6 {
+				midPrefix := fmt.Sprintf("%s_%d", prefix+relation[3], count)
+				joins = append(joins, fmt.Sprintf(
+					`FULL JOIN "%s" as "%s" ON "%s" FULL JOIN "%s" as "%s" ON %s`,
+					prefix+relation[3],
+					midPrefix,
+					fmt.Sprintf(`"%s" = "%s"`, asTable+`"."`+relation[1], midPrefix+`"."`+relation[4]),
+					prefix+relation[0],
+					newPrefix,
+					fmt.Sprintf(`"%s" = "%s"`, newPrefix+`"."`+relation[1], midPrefix+`"."`+relation[5]),
+				))
 			}
 
 			subJoins, subQuery, subVars, err := value.P(relation[0], newPrefix, prefix, countFn)
