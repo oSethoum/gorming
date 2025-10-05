@@ -88,8 +88,8 @@ export type TSchema = {
 
 export type TWhere<T extends keyof TSchema, K = keyof TSchema[T]["fields"]> = {
    not?: TWhere<T>;
-   and?: Array<TWhere<T>>;
-   or?: Array<TWhere<T>>;
+   and?: Array<TWhere<T> | undefined | null>;
+   or?: Array<TWhere<T> | undefined | null>;
    field?:
       | [name: K, predicate: TNullPredicate]
       | [name: K, predicate: TArrayPredicate, Array<any>]
